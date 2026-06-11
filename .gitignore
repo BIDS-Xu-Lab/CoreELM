@@ -15,4 +15,5 @@ EOF
 # Project specified exclusions
 test.ipynb
 _tested/
-demo_dataset/
+demo_dataset/data
+data

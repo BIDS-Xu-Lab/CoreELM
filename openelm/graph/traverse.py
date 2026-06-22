@@ -13,9 +13,9 @@ def walk_from_leaf(adj, leaf_idx, depth, rng=None):
     path = [leaf_idx]
     lvl = depth
     while lvl != 0:
-        parents == adj.T.getrow(path[-1]).indices
-        if parents.size() > 0:
-            path.append(rng.choose(parents)
+        parents = adj.T.getrow(path[-1]).indices
+        if parents.size > 0:
+            path.append(rng.choice(parents) if rng else parents[0])
         else:
             return
         lvl-=1

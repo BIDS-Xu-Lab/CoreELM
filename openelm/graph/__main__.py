@@ -7,7 +7,8 @@ from pathlib import Path
 ## Internal imports
 from .build import load_pmids, load_abstracts, fetch_citations, build_edges, build_csr
 
-parser = argparse.ArgumentParser(description = 'Build Citation DAG from icite data.')    parser.add_argument('--txt', required=True, help='Abstracts raw text file')
+parser = argparse.ArgumentParser(description = 'Build Citation DAG from icite data.')
+parser.add_argument('--txt', required=True, help='Abstracts raw text file')
 parser.add_argument('--pmidf', required=True, help='Ordered PMIDs, one per line')
 parser.add_argument('--db', default = 'data/icite/icite.db', help = 'Path to citation database')
 parser.add_argument('--outputd', default='./graph_output', help='Directory to write output files (created if absent)')

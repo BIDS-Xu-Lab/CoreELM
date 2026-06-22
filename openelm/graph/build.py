@@ -62,11 +62,10 @@ def build_edges(pmid_tbl, pmid_idx, weight_fn=None):
     return edges
 
 def build_csr(edges, n):
-    try:
-        rows, cols, data = zip(*edges)
-        return sp.csr_matrix(
-            (np.array(data, dtype=np.float32), (np.array(rows, dtype=np.int32), np.array(cols, dtype=np.int32))),
-            shape=(n, n)
-        )
-    except Exception as e:
-        raise ValueError(f"No edges found")
+    if not edges:
+        raise ValueError("No edges found — check that PMIDs overlap with iCite cited_by data")
+    rows, cols, data = zip(*edges)
+    return sp.csr_matrix(
+        (np.array(data, dtype=np.float32), (np.array(rows, dtype=np.int32), np.array(cols, dtype=np.int32))),
+        shape=(n, n)
+    )

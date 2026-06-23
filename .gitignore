@@ -17,3 +17,8 @@ test.ipynb
 _tested/
 demo_dataset/data
 data
+
+# Large generated data files
+graph_output/
+embeddings/
+tmp/

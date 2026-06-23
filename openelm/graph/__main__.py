@@ -6,6 +6,8 @@ from pathlib import Path
 
 ## Internal imports
 from .build import load_pmids, load_abstracts, fetch_citations, build_edges, build_csr
+from .traverse import branch_iterator
+from .chains import one_text_chain
 
 parser = argparse.ArgumentParser(description = 'Build Citation DAG from icite data.')
 parser.add_argument('--txt', required=True, help='Abstracts raw text file')
@@ -36,8 +38,20 @@ print(f'  {len(edges)} edges found')
 print('Building CSR...')
 adj = build_csr(edges, len(pmids))
 
+print('extracting sample chains...')
+for i, chain in enumerate(branch_iterator(adj,depth=2)):
+    text_chain = one_text_chain(chain, abstracts)
+    print(f'\n---Chain {i}---')
+    for j, text in enumerate(text_chain):
+        print(f'   [{j}]: {str(text)[:120]}')
+    if i >= 2:
+        break
+
 print('Saving...')
 sp.save_npz(output_dir / 'graph_adj.npz', adj)
 np.save(output_dir / 'pmids.npy', pmids)
 np.save(output_dir / 'abstracts.npy', abstracts)
 print('Done.')
+
+
+

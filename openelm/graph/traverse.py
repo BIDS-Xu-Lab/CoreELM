@@ -9,11 +9,11 @@ def leaves(adj):
     '''
     return np.where(np.diff(adj.indptr) == 0)[0].astype(np.int32)
     
-def walk_from_leaf(adj, leaf_idx, depth, rng=None):
+def walk_from_leaf(adj_T, leaf_idx, depth, rng=None):
     path = [leaf_idx]
     lvl = depth
     while lvl != 0:
-        parents = adj.T.getrow(path[-1]).indices
+        parents = adj_T.getrow(path[-1]).indices
         if parents.size > 0:
             path.append(rng.choice(parents) if rng else parents[0])
         else:
@@ -23,8 +23,9 @@ def walk_from_leaf(adj, leaf_idx, depth, rng=None):
 
 def branch_iterator(adj, depth=5, seed=None):
     rng = default_rng(seed) if seed is not None else None
+    adj_T = adj.T.tocsr()
     leaf_nodes = leaves(adj)
     for leaf in leaf_nodes:
-        chain = walk_from_leaf(adj, leaf, depth, rng)
+        chain = walk_from_leaf(adj_T, leaf, depth, rng)
         if chain is not None:
             yield chain

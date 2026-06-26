@@ -5,7 +5,7 @@ prepare_graph_dataset:
   depth: 5
   tasks:
     - task_name: chain_depth5
-      prompt_template: "The following papers form a citation chain in chronological order:{emb_token}{emb_token}{emb_token}{emb_token}{emb_token}{emb_token}. Write the abstract of the most recent paper."
+      prompt_template: "The following papers form a citation chain in chronological order:{emb_token}{emb_token}{emb_token}{emb_token}{emb_token}. Write the abstract of the paper that cites all of them."
 
 train:
   output_dir: experiment_output/chain_depth5

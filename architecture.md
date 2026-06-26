@@ -79,14 +79,14 @@ All pipeline scripts accept `--config` (default: `configs/pipeline.yaml`) and an
 configs/
   pipeline.yaml              ← stable: paths, model, hyperparams
   experiments/
-    chain2_reconstruct.yaml  ← depth 1, target embedding included
-    chain2_generate.yaml     ← depth 1, target embedding withheld
-    chain3_reconstruct.yaml  ← depth 2, target embedding included
-    chain3_generate.yaml     ← depth 2, target embedding withheld
-    chain4_reconstruct.yaml  ← depth 3, target embedding included
-    chain4_generate.yaml     ← depth 3, target embedding withheld
-    chain5_reconstruct.yaml  ← depth 4, target embedding included
-    chain5_generate.yaml     ← depth 4, target embedding withheld
+    chain1_reconstruct.yaml  ← 1 ancestor, target embedding included
+    chain1_generate.yaml     ← 1 ancestor, target embedding withheld
+    chain2_reconstruct.yaml  ← 2 ancestors, target embedding included
+    chain2_generate.yaml     ← 2 ancestors, target embedding withheld
+    chain3_reconstruct.yaml  ← 3 ancestors, target embedding included
+    chain3_generate.yaml     ← 3 ancestors, target embedding withheld
+    chain4_reconstruct.yaml  ← 4 ancestors, target embedding included
+    chain4_generate.yaml     ← 4 ancestors, target embedding withheld
 ```
 
 **`pipeline.yaml` top-level sections:**
@@ -296,16 +296,18 @@ Two modes per chain length:
 - **Reconstruct** (`include_target_embedding: true`) — all chain papers embedded; model reproduces the target abstract
 - **Generate** (`include_target_embedding: false`) — only `chain[:-1]` embedded; model must produce novel output for the unseen citing paper
 
-| Experiment | Depth | Chain length | Input embeddings | Mode |
+Chain number = number of ancestor papers in the lineage (excluding the target).
+
+| Experiment | Ancestors | Depth | Input embeddings | Mode |
 |---|---|---|---|---|
-| `chain2_reconstruct` | 1 | 2 | 2 | Reconstruct |
-| `chain2_generate` | 1 | 2 | 1 | Generate |
-| `chain3_reconstruct` | 2 | 3 | 3 | Reconstruct |
-| `chain3_generate` | 2 | 3 | 2 | Generate |
-| `chain4_reconstruct` | 3 | 4 | 4 | Reconstruct |
-| `chain4_generate` | 3 | 4 | 3 | Generate |
-| `chain5_reconstruct` | 4 | 5 | 5 | Reconstruct |
-| `chain5_generate` | 4 | 5 | 4 | Generate |
+| `chain1_reconstruct` | 1 | 1 | 2 | Reconstruct |
+| `chain1_generate` | 1 | 1 | 1 | Generate |
+| `chain2_reconstruct` | 2 | 2 | 3 | Reconstruct |
+| `chain2_generate` | 2 | 2 | 2 | Generate |
+| `chain3_reconstruct` | 3 | 3 | 4 | Reconstruct |
+| `chain3_generate` | 3 | 3 | 3 | Generate |
+| `chain4_reconstruct` | 4 | 4 | 5 | Reconstruct |
+| `chain4_generate` | 4 | 4 | 4 | Generate |
 
 All use the same generation target: `abstracts[chain[-1]]` (the most recent / citing paper's abstract).
 

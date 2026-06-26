@@ -2,11 +2,11 @@ paths:
   dataset_subdir: dataset_chain2_generate
 
 prepare_graph_dataset:
-  depth: 1
+  depth: 2
   tasks:
     - task_name: chain2_generate
       include_target_embedding: false
-      prompt_template: "The following paper forms the beginning of a citation chain:{emb_token} Write the abstract of the paper that cites it."
+      prompt_template: "The following papers form a citation chain in chronological order:{emb_token}{emb_token} Write the abstract of the paper that cites them."
 
 train:
   output_dir: experiment_output/chain2_generate

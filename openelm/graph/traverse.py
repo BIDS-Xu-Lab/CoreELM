@@ -29,3 +29,11 @@ def branch_iterator(adj, depth=5, seed=None):
         chain = walk_from_leaf(adj_T, leaf, depth, rng)
         if chain is not None:
             yield chain
+
+def edge_iter(adj):
+    '''
+    using the CSR, yield all edges
+    '''
+    cx = adj.tocoo()
+    for parent, child in zip(cx.row,cx.col):
+        yield np.array([parent,child])

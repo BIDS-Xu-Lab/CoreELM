@@ -1,0 +1,20 @@
+paths:
+  graph_outputd: graph_output
+  embeddings_outputd: embeddings
+
+graph_build:
+  txt: data/pubmed200k/abstracts.txt
+  pmidf: data/pubmed200k/pmids.txt
+  db: data/icite/icite.db
+
+embed_abstracts:
+  model: BAAI/bge-large-en-v1.5
+  embed_dim: 1024
+  batch: 256
+  chkpt: 5
+
+prepare_graph_dataset:
+  base_model: meta-llama/Llama-3.1-8B-Instruct
+  depth: 5
+  train_ratio: 0.95
+  max_chains: null

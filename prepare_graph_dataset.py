@@ -11,23 +11,26 @@ from openelm.config import load_config
 
 def graph_chain_generator(adj, abstracts, embeddings, tokenizer, emb_token, gen_token, depth, n_total, seed, task=None):
     n_slots = task.prompt_template.count("{emb_token}") if task else 0
+    include_target = task.get("include_target_embedding", True) if task else True
+    # chain length = n_slots when target is included, n_slots+1 when withheld
+    expected_chain_len = n_slots if include_target else n_slots + 1
     for chain in branch_iterator(adj, depth=depth, max_chains=n_total, seed=seed):
-        if n_slots > 1 and len(chain) != n_slots:
+        if n_slots > 0 and len(chain) != expected_chain_len:
             continue
         target = abstracts[chain[-1]]
         if target is None:
             continue
-        if n_slots == 1:
-            prompt = task.prompt_template.replace("{emb_token}", " ".join([emb_token] * len(chain)))
-        elif n_slots > 1:
+        if n_slots > 0:
             prompt = task.prompt_template.format(emb_token=emb_token)
         else:
-            prompt = " ".join([emb_token] * len(chain))
+            indices_count = len(chain) if include_target else len(chain) - 1
+            prompt = " ".join([emb_token] * indices_count)
         chat = [
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": gen_token + str(target)},
         ]
-        domain_embeddings = [torch.Tensor(embeddings[idx]) for idx in chain]
+        indices = chain if include_target else chain[:-1]
+        domain_embeddings = [torch.Tensor(embeddings[idx]) for idx in indices]
         yield {
             "input_ids": tokenizer.apply_chat_template(chat),
             "domain_embeddings": domain_embeddings,

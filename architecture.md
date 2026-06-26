@@ -79,12 +79,14 @@ All pipeline scripts accept `--config` (default: `configs/pipeline.yaml`) and an
 configs/
   pipeline.yaml              ← stable: paths, model, hyperparams
   experiments/
-    cite_pair.yaml           ← overrides: depth, tasks, output dirs
-    cite_pair_temporal.yaml
-    cite_pair_instruct.yaml
-    chain_depth2.yaml
-    chain_depth2_instruct.yaml
-    chain_depth5.yaml
+    chain2_reconstruct.yaml  ← depth 1, target embedding included
+    chain2_generate.yaml     ← depth 1, target embedding withheld
+    chain3_reconstruct.yaml  ← depth 2, target embedding included
+    chain3_generate.yaml     ← depth 2, target embedding withheld
+    chain4_reconstruct.yaml  ← depth 3, target embedding included
+    chain4_generate.yaml     ← depth 3, target embedding withheld
+    chain5_reconstruct.yaml  ← depth 4, target embedding included
+    chain5_generate.yaml     ← depth 4, target embedding withheld
 ```
 
 **`pipeline.yaml` top-level sections:**
@@ -290,14 +292,20 @@ All experiments use the same counts (set in `pipeline.yaml`, overridable per exp
 
 ### Defined Experiments
 
-| Experiment | Depth | Nodes | Prompt style |
-|---|---|---|---|
-| `cite_pair` | 1 | 2 | Positional labels |
-| `cite_pair_temporal` | 1 | 2 | Temporal framing |
-| `cite_pair_instruct` | 1 | 2 | Instructional |
-| `chain_depth2` | 2 | 3 | Temporal chain |
-| `chain_depth2_instruct` | 2 | 3 | Instructional chain |
-| `chain_depth5` | 5 | 6 | Temporal chain |
+Two modes per chain length:
+- **Reconstruct** (`include_target_embedding: true`) — all chain papers embedded; model reproduces the target abstract
+- **Generate** (`include_target_embedding: false`) — only `chain[:-1]` embedded; model must produce novel output for the unseen citing paper
+
+| Experiment | Depth | Chain length | Input embeddings | Mode |
+|---|---|---|---|---|
+| `chain2_reconstruct` | 1 | 2 | 2 | Reconstruct |
+| `chain2_generate` | 1 | 2 | 1 | Generate |
+| `chain3_reconstruct` | 2 | 3 | 3 | Reconstruct |
+| `chain3_generate` | 2 | 3 | 2 | Generate |
+| `chain4_reconstruct` | 3 | 4 | 4 | Reconstruct |
+| `chain4_generate` | 3 | 4 | 3 | Generate |
+| `chain5_reconstruct` | 4 | 5 | 5 | Reconstruct |
+| `chain5_generate` | 4 | 5 | 4 | Generate |
 
 All use the same generation target: `abstracts[chain[-1]]` (the most recent / citing paper's abstract).
 

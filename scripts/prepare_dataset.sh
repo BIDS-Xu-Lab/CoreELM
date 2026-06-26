@@ -6,6 +6,8 @@
 #SBATCH --time=48:00:00
 #SBATCH --output=logs/prepare_%j.out
 #SBATCH --error=logs/prepare_%j.err
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=david.kaauwai@yale.edu
 
 module load miniconda
 conda activate ctELM_proj

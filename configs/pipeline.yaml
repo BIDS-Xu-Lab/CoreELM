@@ -17,8 +17,15 @@ embed_abstracts:
 prepare_graph_dataset:
   base_model: meta-llama/Llama-3.1-8B-Instruct
   depth: 5
-  train_ratio: 0.95
-  max_chains: null
+  seed: 42
+  n_train: 2000000
+  n_val: 100000
+  n_eval: 100000
+
+eval:
+  batch_size: 8
+  max_new_tokens: 256
+  repetition_penalty: 1.2
 
 train:
   basemodel_path: models/initial_elm_model

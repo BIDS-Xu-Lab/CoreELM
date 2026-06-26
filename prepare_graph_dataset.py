@@ -9,11 +9,9 @@ from openelm.tokens_map import TOKEN_MAP_DICT
 from openelm.graph.traverse import branch_iterator
 from openelm.config import load_config
 
-def graph_chain_generator(adj, abstracts, embeddings, tokenizer, emb_token, gen_token, depth, max_chains=None, task=None):
+def graph_chain_generator(adj, abstracts, embeddings, tokenizer, emb_token, gen_token, depth, n_total, seed, task=None):
     n_slots = task.prompt_template.count("{emb_token}") if task else 0
-    for i, chain in enumerate(branch_iterator(adj, depth=depth)):
-        if max_chains is not None and i >= max_chains:
-            break
+    for chain in branch_iterator(adj, depth=depth, max_chains=n_total, seed=seed):
         if n_slots > 1 and len(chain) != n_slots:
             continue
         target = abstracts[chain[-1]]
@@ -33,6 +31,7 @@ def graph_chain_generator(adj, abstracts, embeddings, tokenizer, emb_token, gen_
         yield {
             "input_ids": tokenizer.apply_chat_template(chat),
             "domain_embeddings": domain_embeddings,
+            "target_idx": int(chain[-1]),
         }
 
 def main():
@@ -52,6 +51,8 @@ def main():
     dataset_outputd    = graph_outputd / cfg.paths.dataset_subdir
     dataset_outputd.mkdir(parents=True, exist_ok=True)
 
+    n_total = pcfg.n_train + pcfg.n_val + pcfg.n_eval
+
     print("Loading graph...")
     adj = sp.load_npz(graph_outputd / "graph_adj.npz")
 
@@ -69,30 +70,38 @@ def main():
     emb_token = TOKEN_MAP_DICT[pcfg.base_model]["emb_tok"]
     gen_token  = TOKEN_MAP_DICT[pcfg.base_model]["gen_tok"]
 
-    tasks = pcfg.get("tasks", None)
+    tasks     = pcfg.get("tasks", None)
     task_list = list(tasks) if tasks else [None]
 
-    print("Building dataset from citation chains...")
+    print(f"Sampling {n_total} chains per task ({len(task_list)} task(s))...")
     train_datasets = []
     val_datasets   = []
+    eval_datasets  = []
+
     for task in task_list:
         ds = Dataset.from_generator(
             lambda t=task: graph_chain_generator(
                 adj, abstracts, embeddings, tokenizer,
-                emb_token, gen_token, pcfg.depth, pcfg.max_chains, t
+                emb_token, gen_token, pcfg.depth, n_total, pcfg.seed, t
             )
         )
-        split = ds.train_test_split(test_size=1 - pcfg.train_ratio, seed=42)
-        train_datasets.append(split["train"])
-        val_datasets.append(split["test"])
+        ds = ds.shuffle(seed=pcfg.seed)
+        train_datasets.append(ds.select(range(pcfg.n_train)))
+        val_datasets.append(  ds.select(range(pcfg.n_train, pcfg.n_train + pcfg.n_val)))
+        eval_datasets.append( ds.select(range(pcfg.n_train + pcfg.n_val, n_total)))
 
-    train_ds = interleave_datasets(train_datasets) if len(train_datasets) > 1 else train_datasets[0]
-    val_ds   = interleave_datasets(val_datasets)   if len(val_datasets)   > 1 else val_datasets[0]
+    def merge(dsets):
+        return interleave_datasets(dsets) if len(dsets) > 1 else dsets[0]
+
+    train_ds = merge(train_datasets)
+    val_ds   = merge(val_datasets)
+    eval_ds  = merge(eval_datasets)
 
     train_ds.save_to_disk(str(dataset_outputd / "train"))
-    val_ds.save_to_disk(str(dataset_outputd / "validation"))
+    val_ds.save_to_disk(  str(dataset_outputd / "validation"))
+    eval_ds.save_to_disk( str(dataset_outputd / "evaluation"))
 
-    print(f"Done. {len(train_ds)} train / {len(val_ds)} validation chains saved to {dataset_outputd}")
+    print(f"Done. {len(train_ds)} train / {len(val_ds)} validation / {len(eval_ds)} evaluation chains saved to {dataset_outputd}")
 
 if __name__ == "__main__":
     main()

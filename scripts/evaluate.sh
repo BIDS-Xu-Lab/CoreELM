@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --job-name=ctELM_eval
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:h100:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=04:00:00
+#SBATCH --output=logs/eval_%j.out
+#SBATCH --error=logs/eval_%j.err
+
+module load miniconda
+conda activate ctELM_proj
+
+EXPERIMENT=${1:-}
+
+if [ -n "$EXPERIMENT" ]; then
+    python evaluate.py --config configs/pipeline.yaml --experiment "$EXPERIMENT"
+else
+    python evaluate.py --config configs/pipeline.yaml
+fi

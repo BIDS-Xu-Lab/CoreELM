@@ -3,7 +3,7 @@
 #SBATCH --partition=gpu
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
-#SBATCH --time=04:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=logs/prepare_%j.out
 #SBATCH --error=logs/prepare_%j.err
 

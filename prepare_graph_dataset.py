@@ -4,19 +4,27 @@ import scipy.sparse as sp
 import torch
 from pathlib import Path
 from transformers import AutoTokenizer
-from datasets import Dataset
+from datasets import Dataset, interleave_datasets
 from openelm.tokens_map import TOKEN_MAP_DICT
 from openelm.graph.traverse import branch_iterator
 from openelm.config import load_config
 
-def graph_chain_generator(adj, abstracts, embeddings, tokenizer, emb_token, gen_token, depth, max_chains=None):
+def graph_chain_generator(adj, abstracts, embeddings, tokenizer, emb_token, gen_token, depth, max_chains=None, task=None):
+    n_slots = task.prompt_template.count("{emb_token}") if task else 0
     for i, chain in enumerate(branch_iterator(adj, depth=depth)):
         if max_chains is not None and i >= max_chains:
             break
+        if n_slots > 1 and len(chain) != n_slots:
+            continue
         target = abstracts[chain[-1]]
         if target is None:
             continue
-        prompt = " ".join([emb_token] * len(chain))
+        if n_slots == 1:
+            prompt = task.prompt_template.replace("{emb_token}", " ".join([emb_token] * len(chain)))
+        elif n_slots > 1:
+            prompt = task.prompt_template.format(emb_token=emb_token)
+        else:
+            prompt = " ".join([emb_token] * len(chain))
         chat = [
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": gen_token + str(target)},
@@ -61,19 +69,30 @@ def main():
     emb_token = TOKEN_MAP_DICT[pcfg.base_model]["emb_tok"]
     gen_token  = TOKEN_MAP_DICT[pcfg.base_model]["gen_tok"]
 
+    tasks = pcfg.get("tasks", None)
+    task_list = list(tasks) if tasks else [None]
+
     print("Building dataset from citation chains...")
-    dataset = Dataset.from_generator(
-        lambda: graph_chain_generator(
-            adj, abstracts, embeddings, tokenizer,
-            emb_token, gen_token, pcfg.depth, pcfg.max_chains
+    train_datasets = []
+    val_datasets   = []
+    for task in task_list:
+        ds = Dataset.from_generator(
+            lambda t=task: graph_chain_generator(
+                adj, abstracts, embeddings, tokenizer,
+                emb_token, gen_token, pcfg.depth, pcfg.max_chains, t
+            )
         )
-    )
+        split = ds.train_test_split(test_size=1 - pcfg.train_ratio, seed=42)
+        train_datasets.append(split["train"])
+        val_datasets.append(split["test"])
 
-    split = dataset.train_test_split(test_size=1 - pcfg.train_ratio, seed=42)
-    split["train"].save_to_disk(str(dataset_outputd / "train"))
-    split["test"].save_to_disk(str(dataset_outputd / "validation"))
+    train_ds = interleave_datasets(train_datasets) if len(train_datasets) > 1 else train_datasets[0]
+    val_ds   = interleave_datasets(val_datasets)   if len(val_datasets)   > 1 else val_datasets[0]
 
-    print(f"Done. {len(split['train'])} train / {len(split['test'])} validation chains saved to {dataset_outputd}")
+    train_ds.save_to_disk(str(dataset_outputd / "train"))
+    val_ds.save_to_disk(str(dataset_outputd / "validation"))
+
+    print(f"Done. {len(train_ds)} train / {len(val_ds)} validation chains saved to {dataset_outputd}")
 
 if __name__ == "__main__":
     main()

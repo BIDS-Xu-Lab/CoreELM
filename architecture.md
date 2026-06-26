@@ -258,6 +258,14 @@ Each experiment is a YAML file in `configs/experiments/` that overrides a minima
 
 ### Running an experiment (Bouchet / SLURM)
 
+One-time setup (after transferring `graph_output/` from local):
+
+```bash
+sbatch scripts/embed.sh                                            # 1× H100, up to 2h
+```
+
+Per-experiment pipeline:
+
 ```bash
 sbatch scripts/prepare_dataset.sh configs/experiments/<name>.yaml  # CPU, up to 48h
 sbatch scripts/train.sh           configs/experiments/<name>.yaml  # 2× H100, up to 48h
@@ -335,6 +343,7 @@ ctELM-with-graph-time-embeddings/
 │       ├── checkpoint-*/
 │       └── eval_results.json
 ├── scripts/
+│   ├── embed.sh                   ← SLURM GPU job (1× H100, 2h) — one-time
 │   ├── prepare_dataset.sh         ← SLURM CPU job (48h)
 │   ├── train.sh                   ← SLURM GPU job (2× H100, torchrun, 48h)
 │   └── evaluate.sh                ← SLURM GPU job (1× H100, 4h)

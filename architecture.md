@@ -80,7 +80,11 @@ configs/
   pipeline.yaml              ← stable: paths, model, hyperparams
   experiments/
     cite_pair.yaml           ← overrides: depth, tasks, output dirs
-    <future_experiment>.yaml
+    cite_pair_temporal.yaml
+    cite_pair_instruct.yaml
+    chain_depth2.yaml
+    chain_depth2_instruct.yaml
+    chain_depth5.yaml
 ```
 
 **`pipeline.yaml` top-level sections:**
@@ -90,7 +94,8 @@ configs/
 | `paths` | Shared filesystem roots: `graph_outputd`, `embeddings_outputd`, `dataset_subdir` |
 | `graph_build` | Inputs for `openelm/graph/__main__.py`: txt, pmidf, db paths |
 | `embed_abstracts` | Encoder model, batch size, checkpoint interval, `embed_dim` |
-| `prepare_graph_dataset` | Base model (tokenizer), depth, train ratio, chain cap |
+| `prepare_graph_dataset` | Base model (tokenizer), depth, seed, `n_train`, `n_val`, `n_eval` |
+| `eval` | Generation params: `batch_size`, `max_new_tokens`, `repetition_penalty` |
 | `train` | Base model path, output dir, LoRA training hyperparams |
 
 **Experiment YAMLs** own the keys that vary between runs: `prepare_graph_dataset.tasks` (prompt templates), `prepare_graph_dataset.depth`, `paths.dataset_subdir`, and `train.output_dir`. The base pipeline config never defines tasks — those are experiment-specific.
@@ -110,11 +115,13 @@ Row `i` of `adj` contains all papers in the 200k set that **cite** paper `i`. Th
 
 ### Traversal (`traverse.py`)
 
-`branch_iterator` walks backward through time from each leaf:
+`branch_iterator` walks backward through time from each leaf. It has two modes:
 
-1. Precompute `adj_T = adj.T.tocsr()` once
-2. For each leaf node, `walk_from_leaf` follows `adj_T` rows (= references of the current paper) up to `depth` hops, accumulating a path of older and older papers
-3. Path is reversed before yielding → **chain is ordered oldest → newest**, `chain[-1]` is always the leaf (most recent / citing paper)
+**Seeded (random sampling, used in practice):** picks a random leaf, performs a random walk backwards through `adj_T` for `depth` hops, and records the chain. Chains are deduplicated via `.tobytes()` hash. Stops at `max_chains`. This is the mode used by `prepare_graph_dataset.py` — the chain space is combinatorially enormous so exhaustive enumeration is not feasible.
+
+**Unseeded (exhaustive DFS):** a stack-based DFS from every leaf that yields all complete paths of exactly `depth` hops. Used for analysis or small graphs.
+
+In both modes, paths are reversed before yielding → **chain is ordered oldest → newest**, `chain[-1]` is always the leaf (most recent / citing paper).
 
 ```mermaid
 graph LR
@@ -128,7 +135,8 @@ build_csr()"]
 
         traverse["traverse.py
 leaves()
-walk_from_leaf()
+_random_walk()
+_dfs_chains()
 branch_iterator()
 edge_iter()"]
 
@@ -161,7 +169,7 @@ chain = [root, ..., chain[-2], chain[-1]]
 
 For a depth-1 chain: `chain = [cited_paper, citing_paper]`
 - `chain[0]` — the cited paper (older)
-- `chain[-1]` — the citing paper (newer); its abstract is the generation target
+- `chain[-1]` — the citing paper (newer); its abstract is the generation target; its index is stored as `target_idx` in the dataset for eval lookup
 
 ---
 
@@ -207,39 +215,39 @@ flowchart TD
     BaseLM --> IM
     IM --> ckpt[(models/initial_elm_model/\nELM checkpoint + tokenizer)]
 
-    subgraph s4["Step 4 — Prepare Dataset"]
-        PD["prepare_dataset.py\nstatic embeddings · YAML tasks\ntask_specific_generator()"]
-        PGD["prepare_graph_dataset.py\ncitation-chain generator\ngraph_chain_generator()\ntask prompt templates from experiment YAML\ninterleaves multiple tasks"]
+    subgraph s4["Step 4 — Prepare Dataset\n`prepare_graph_dataset.py`"]
+        PGD["random walk sampling · seed + dedup\n2M train · 100k val · 100k eval\ntask prompt templates from experiment YAML\ntarget_idx stored per example\ninterleaves multiple tasks"]
     end
 
-    PubMed -.->|embeddings + texts via YAML| PD
     adj --> PGD
     abs --> PGD
     emb --> PGD
-    pipe --> s4
+    pipe --> PGD
     exp --> PGD
 
-    PD  --> hfo[(HF Dataset\nstatic train / val\nencoded_training_dataset/)]
-    PGD --> hfg[(HF Dataset\ngraph train / val\npaths.dataset_subdir/train · /validation)]
+    PGD --> hfg[(HF Dataset · paths.dataset_subdir/\ntrain/ · validation/ · evaluation/)]
 
     subgraph s5["Step 5 — Train\n`train.py`"]
-        TR["SFTTrainer + LoRA\ntarget: q_proj · k_proj\nmodules_to_save: adapter\nreads dataset from paths.dataset_subdir"]
+        TR["SFTTrainer + LoRA\ntarget: q_proj · k_proj\nmodules_to_save: adapter\nreads train/ and validation/"]
     end
 
     ckpt --> TR
-    hfo --> TR
     hfg --> TR
     pipe --> s5
     exp --> s5
-    TR --> trained[(experiment_output/<name>/\nLoRA + adapter checkpoint\nbase model untouched)]
+    TR --> trained[(experiment_output/name/\nLoRA + adapter checkpoint\nbase model untouched)]
 
-    subgraph s6["Step 6 — Inference\n`inference.py`"]
-        INF["load_elm_model()\nbatched_inference_input_generator()\nlora_elm.generate()"]
+    subgraph s6["Step 6 — Evaluate\n`evaluate.py`"]
+        EV["loads latest checkpoint\ngenerates from evaluation/ split\ncosine_sim: embed(generated) vs embeddings[target_idx]\nBERTScore F1 vs abstracts[target_idx]\nsaves eval_results.json"]
     end
 
-    trained --> INF
-    emb --> INF
-    INF --> out([Generated text\n*.pkl per task])
+    trained --> EV
+    hfg --> EV
+    emb --> EV
+    abs --> EV
+    pipe --> EV
+    exp --> EV
+    EV --> res([experiment_output/name/eval_results.json\nper-example + aggregate stats])
 ```
 
 ---
@@ -251,39 +259,48 @@ Each experiment is a YAML file in `configs/experiments/` that overrides a minima
 ### Running an experiment (Bouchet / SLURM)
 
 ```bash
-# build dataset for this experiment (CPU job)
-sbatch scripts/prepare_dataset.sh configs/experiments/<name>.yaml
-
-# train on that dataset (GPU job, 2× H100)
-sbatch scripts/train.sh configs/experiments/<name>.yaml
+sbatch scripts/prepare_dataset.sh configs/experiments/<name>.yaml  # CPU, up to 48h
+sbatch scripts/train.sh           configs/experiments/<name>.yaml  # 2× H100, up to 48h
+sbatch scripts/evaluate.sh        configs/experiments/<name>.yaml  # 1× H100, up to 4h
 ```
 
 Outputs are isolated per experiment via:
 - `paths.dataset_subdir` → separate HF dataset directory under `graph_output/`
-- `train.output_dir` → separate LoRA checkpoint directory under `experiment_output/`
+- `train.output_dir` → separate LoRA checkpoint + `eval_results.json` under `experiment_output/`
 
 The base model at `models/initial_elm_model/` is read-only and shared across all experiments — only the small LoRA adapter weights are written per run.
 
+### Dataset Split
+
+All experiments use the same counts (set in `pipeline.yaml`, overridable per experiment):
+
+| Split | Size | Used by |
+|---|---|---|
+| `train/` | 2,000,000 | `train.py` |
+| `validation/` | 100,000 | `train.py` (eval during training) |
+| `evaluation/` | 100,000 | `evaluate.py` (post-training metrics) |
+
 ### Defined Experiments
 
-#### `cite_pair` (`configs/experiments/cite_pair.yaml`)
+| Experiment | Depth | Nodes | Prompt style |
+|---|---|---|---|
+| `cite_pair` | 1 | 2 | Positional labels |
+| `cite_pair_temporal` | 1 | 2 | Temporal framing |
+| `cite_pair_instruct` | 1 | 2 | Instructional |
+| `chain_depth2` | 2 | 3 | Temporal chain |
+| `chain_depth2_instruct` | 2 | 3 | Instructional chain |
+| `chain_depth5` | 5 | 6 | Temporal chain |
 
-| Key | Value |
+All use the same generation target: `abstracts[chain[-1]]` (the most recent / citing paper's abstract).
+
+### Evaluation Metrics (`evaluate.py`)
+
+| Metric | How |
 |---|---|
-| `prepare_graph_dataset.depth` | 1 (2-node chains only) |
-| `paths.dataset_subdir` | `dataset_cite_pair` |
-| `train.output_dir` | `experiment_output/cite_pair` |
+| **Cosine similarity** | `bge-large-en-v1.5` embedding of generated text vs `embeddings[target_idx]` |
+| **BERTScore F1** | generated text vs `abstracts[target_idx]` via `evaluate` library |
 
-**Task:** Given the semantic embedding of a cited paper and its citing paper, generate the citing abstract.
-
-```
-Input:  "Cited paper: <emb_tok> Citing paper: <emb_tok>"
-            ↑ emb(chain[0])          ↑ emb(chain[1])
-Target: abstract of chain[1]  (the citing paper)
-Eval:   cosine_sim(embed(generated_text), emb(chain[1]))
-```
-
-The 2-slot prompt template filters `branch_iterator` to chains of exactly length 2, so all training examples are clean cited→citing pairs.
+Results saved to `experiment_output/<name>/eval_results.json` with per-example scores and aggregate mean ± std.
 
 ---
 
@@ -292,9 +309,14 @@ The 2-slot prompt template filters `branch_iterator` to chains of exactly length
 ```
 ctELM-with-graph-time-embeddings/
 ├── configs/
-│   ├── pipeline.yaml              ← base config (committed)
+│   ├── pipeline.yaml
 │   └── experiments/
-│       └── cite_pair.yaml
+│       ├── cite_pair.yaml
+│       ├── cite_pair_temporal.yaml
+│       ├── cite_pair_instruct.yaml
+│       ├── chain_depth2.yaml
+│       ├── chain_depth2_instruct.yaml
+│       └── chain_depth5.yaml
 ├── models/                        ← symlink → shared model store
 │   ├── initial_elm_model/
 │   └── 5tasks_full_tuning_lora_outputs/
@@ -302,16 +324,19 @@ ctELM-with-graph-time-embeddings/
 │   ├── graph_adj.npz
 │   ├── abstracts.npy
 │   ├── pmids.npy
-│   └── dataset_cite_pair/         ← written by prepare_dataset.sh
+│   └── dataset_<name>/            ← written by prepare_dataset.sh
 │       ├── train/
-│       └── validation/
+│       ├── validation/
+│       └── evaluation/
 ├── embeddings/                    ← transferred from local encode
 │   └── embeddings.npy
 ├── experiment_output/             ← symlink → scratch (auto-scrubbed 60d)
-│   └── cite_pair/                 ← written by train.sh
-│       └── checkpoint-*/
+│   └── <name>/                    ← written by train.sh + evaluate.sh
+│       ├── checkpoint-*/
+│       └── eval_results.json
 ├── scripts/
-│   ├── prepare_dataset.sh         ← SLURM CPU job
-│   └── train.sh                   ← SLURM GPU job (2× H100, torchrun)
-└── logs/                          ← SLURM stdout/stderr
+│   ├── prepare_dataset.sh         ← SLURM CPU job (48h)
+│   ├── train.sh                   ← SLURM GPU job (2× H100, torchrun, 48h)
+│   └── evaluate.sh                ← SLURM GPU job (1× H100, 4h)
+└── logs/
 ```

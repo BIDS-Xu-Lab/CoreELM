@@ -41,7 +41,7 @@ def main():
 
     graph_outputd      = Path(cfg.paths.graph_outputd)
     embeddings_outputd = Path(cfg.paths.embeddings_outputd)
-    dataset_outputd    = graph_outputd / "dataset"
+    dataset_outputd    = graph_outputd / cfg.paths.dataset_subdir
     dataset_outputd.mkdir(parents=True, exist_ok=True)
 
     print("Loading graph...")

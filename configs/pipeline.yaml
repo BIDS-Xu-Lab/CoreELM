@@ -1,6 +1,7 @@
 paths:
   graph_outputd: graph_output
   embeddings_outputd: embeddings
+  dataset_subdir: dataset
 
 graph_build:
   txt: data/pubmed200k/abstracts.txt
@@ -18,3 +19,14 @@ prepare_graph_dataset:
   depth: 5
   train_ratio: 0.95
   max_chains: null
+
+train:
+  basemodel_path: models/initial_elm_model
+  output_dir: experiment_output/baseline
+  batch_size: 4
+  gradient_accumulation_steps: 8
+  learning_rate: 5e-5
+  num_train_epochs: 1
+  eval_steps: 100
+  save_steps: 0.1
+  resume_from_checkpoint: null

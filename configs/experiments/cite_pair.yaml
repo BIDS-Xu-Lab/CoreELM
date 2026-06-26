@@ -1,0 +1,8 @@
+paths:
+  dataset_subdir: dataset_cite_pair
+
+prepare_graph_dataset:
+  depth: 1
+
+train:
+  output_dir: experiment_output/cite_pair

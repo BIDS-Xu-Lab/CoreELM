@@ -1,38 +1,29 @@
 #!/bin/bash
-# Submit all experiments across all variants, each variant gated on its own embed job.
+# Submit all experiments across all variants using job arrays (5 sbatch calls total).
 # Usage: bash scripts/submit_all.sh
 
 set -euo pipefail
 
-VARIANTS=(
-    configs/pipeline_no_labels_numbers.yaml
-    configs/pipeline_no_labels_no_numbers.yaml
-    configs/pipeline_labels_numbers.yaml
-    configs/pipeline_labels_no_numbers.yaml
-)
+echo "Submitting build_graph array (4 variants)..."
+BUILD_JID=$(sbatch --parsable scripts/build_graph_array.sh)
+echo "  build array job $BUILD_JID"
 
-for variant in "${VARIANTS[@]}"; do
-    VARIANT_NAME=$(basename "$variant" .yaml)
-    echo "=== Variant: $VARIANT_NAME ==="
+echo "Submitting embed array (4 variants, aftercorr:build)..."
+EMBED_JID=$(sbatch --parsable --dependency=aftercorr:$BUILD_JID scripts/embed_array.sh)
+echo "  embed array job $EMBED_JID"
 
-    echo "Submitting build_graph + embed jobs..."
-    BUILD_JID=$(sbatch --parsable scripts/build_graph.sh "$variant")
-    echo "  build_graph job $BUILD_JID"
-    EMBED_JID=$(sbatch --parsable --dependency=afterok:$BUILD_JID scripts/embed.sh "$variant")
-    echo "  embed       job $EMBED_JID"
-    echo ""
+echo "Submitting prepare array (32 experiments, afterok:embed)..."
+PREP_JID=$(sbatch --parsable --dependency=afterok:$EMBED_JID scripts/prepare_array.sh)
+echo "  prepare array job $PREP_JID"
 
-    for exp in chain1 chain2 chain3 chain4; do
-        for mode in reconstruct generate; do
-            bash scripts/submit_pipeline.sh \
-                configs/experiments/${exp}_${mode}.yaml \
-                --variant "$variant" \
-                --after-embed "$EMBED_JID"
-            echo ""
-        done
-    done
+echo "Submitting train array (32 experiments, aftercorr:prepare)..."
+TRAIN_JID=$(sbatch --parsable --dependency=aftercorr:$PREP_JID scripts/train_array.sh)
+echo "  train array job $TRAIN_JID"
 
-    echo ""
-done
+echo "Submitting eval array (32 experiments, aftercorr:train)..."
+EVAL_JID=$(sbatch --parsable --dependency=aftercorr:$TRAIN_JID scripts/eval_array.sh)
+echo "  eval array job $EVAL_JID"
 
-echo "All experiments queued across ${#VARIANTS[@]} variants."
+echo ""
+echo "Pipeline: build[$BUILD_JID] → embed[$EMBED_JID] → prepare[$PREP_JID] → train[$TRAIN_JID] → eval[$EVAL_JID]"
+echo "Each job will email david.kaauwai@yale.edu on END or FAIL."

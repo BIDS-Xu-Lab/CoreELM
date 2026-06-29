@@ -5,7 +5,7 @@ paths:
 
 graph_build:
   txt: data/pubmed200k/abstracts.txt
-  pmidf: data/pubmed200k/pmids.txt
+  pmidf: data/pubmed-rct/pmids/200k_RCT
   db: data/icite/icite.db
 
 embed_abstracts:

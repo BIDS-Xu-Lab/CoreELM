@@ -15,12 +15,13 @@ def main():
     args = parser.parse_args()
 
     cfg = load_config(args.config, args.variant)
+    graph_shared       = Path(cfg.paths.graph_shared)
     graph_outputd      = Path(cfg.paths.graph_outputd)
     embeddings_outputd = Path(cfg.paths.embeddings_outputd)
     embed_dim          = cfg.embed_abstracts.embed_dim
 
     print("Loading graph...")
-    adj = sp.load_npz(graph_outputd / "graph_adj.npz")
+    adj = sp.load_npz(graph_shared / "graph_adj.npz")
     n   = adj.shape[0]
 
     print("Loading embeddings...")

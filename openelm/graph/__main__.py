@@ -17,7 +17,9 @@ def main():
     cfg = load_config(args.config, args.variant, args.experiment)
     gcfg = cfg.graph_build
     output_dir = Path(cfg.paths.graph_outputd)
+    shared_dir = Path(cfg.paths.graph_shared)
     output_dir.mkdir(parents=True, exist_ok=True)
+    shared_dir.mkdir(parents=True, exist_ok=True)
 
     print("Loading PMIDs...")
     pmids, pmid_idx = load_pmids(gcfg.pmidf)
@@ -48,8 +50,8 @@ def main():
             break
 
     print("Saving...")
-    sp.save_npz(output_dir / "graph_adj.npz", adj)
-    np.save(output_dir / "pmids.npy", pmids)
+    sp.save_npz(shared_dir / "graph_adj.npz", adj)
+    np.save(shared_dir / "pmids.npy", pmids)
     np.save(output_dir / "abstracts.npy", abstracts)
     print("Done.")
 

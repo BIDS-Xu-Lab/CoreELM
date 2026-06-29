@@ -50,6 +50,7 @@ def main():
     if pcfg.base_model not in TOKEN_MAP_DICT:
         raise ValueError(f"base_model '{pcfg.base_model}' not in TOKEN_MAP_DICT")
 
+    graph_shared       = Path(cfg.paths.graph_shared)
     graph_outputd      = Path(cfg.paths.graph_outputd)
     embeddings_outputd = Path(cfg.paths.embeddings_outputd)
     dataset_outputd    = graph_outputd / cfg.paths.dataset_subdir
@@ -58,7 +59,7 @@ def main():
     n_total = pcfg.n_train + pcfg.n_val + pcfg.n_eval
 
     print("Loading graph...")
-    adj = sp.load_npz(graph_outputd / "graph_adj.npz")
+    adj = sp.load_npz(graph_shared / "graph_adj.npz")
 
     print("Loading abstracts...")
     abstracts = np.load(graph_outputd / "abstracts.npy", allow_pickle=True)

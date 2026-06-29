@@ -9,10 +9,11 @@ from openelm.config import load_config
 def main():
     parser = argparse.ArgumentParser(description="Encode abstracts with a sentence transformer.")
     parser.add_argument("--config", default="configs/pipeline.yaml")
+    parser.add_argument("--variant", default=None)
     parser.add_argument("--experiment", default=None)
     args = parser.parse_args()
 
-    cfg = load_config(args.config, args.experiment)
+    cfg = load_config(args.config, args.variant, args.experiment)
     graph_outputd      = Path(cfg.paths.graph_outputd)
     embeddings_outputd = Path(cfg.paths.embeddings_outputd)
     embeddings_outputd.mkdir(parents=True, exist_ok=True)

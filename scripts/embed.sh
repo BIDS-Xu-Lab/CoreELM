@@ -13,10 +13,10 @@
 module load miniconda
 conda activate ctELM_proj
 
-EXPERIMENT=${1:-}
+VARIANT=${1:-}
 
-if [ -n "$EXPERIMENT" ]; then
-    python embed_abstracts.py --config configs/pipeline.yaml --experiment "$EXPERIMENT"
+if [ -n "$VARIANT" ]; then
+    python embed_abstracts.py --config configs/pipeline.yaml --variant "$VARIANT"
 else
     python embed_abstracts.py --config configs/pipeline.yaml
 fi

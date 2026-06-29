@@ -10,10 +10,11 @@ from .chains import one_text_chain
 def main():
     parser = argparse.ArgumentParser(description="Build Citation DAG from iCite data.")
     parser.add_argument("--config", default="configs/pipeline.yaml")
+    parser.add_argument("--variant", default=None)
     parser.add_argument("--experiment", default=None)
     args = parser.parse_args()
 
-    cfg = load_config(args.config, args.experiment)
+    cfg = load_config(args.config, args.variant, args.experiment)
     gcfg = cfg.graph_build
     output_dir = Path(cfg.paths.graph_outputd)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -23,7 +24,7 @@ def main():
     print(f"  {len(pmids)} PMIDs loaded")
 
     print("Loading abstracts...")
-    abstracts = load_abstracts(gcfg.txt, pmid_idx)
+    abstracts = load_abstracts(gcfg.txt, pmid_idx, keep_labels=gcfg.get('keep_labels', False))
     print(f"  {len(abstracts)} abstracts loaded")
 
     print("Fetching citations...")

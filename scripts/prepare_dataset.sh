@@ -13,9 +13,10 @@ module load miniconda
 conda activate ctELM_proj
 
 EXPERIMENT=${1:-}
+VARIANT=${2:-}
 
-if [ -n "$EXPERIMENT" ]; then
-    python prepare_graph_dataset.py --config configs/pipeline.yaml --experiment "$EXPERIMENT"
-else
-    python prepare_graph_dataset.py --config configs/pipeline.yaml
-fi
+ARGS=""
+[ -n "$VARIANT" ]    && ARGS="$ARGS --variant $VARIANT"
+[ -n "$EXPERIMENT" ] && ARGS="$ARGS --experiment $EXPERIMENT"
+
+python prepare_graph_dataset.py --config configs/pipeline.yaml $ARGS

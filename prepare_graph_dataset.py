@@ -40,10 +40,11 @@ def graph_chain_generator(adj, abstracts, embeddings, tokenizer, emb_token, gen_
 def main():
     parser = argparse.ArgumentParser(description="Prepare graph chain dataset for ctELM.")
     parser.add_argument("--config", default="configs/pipeline.yaml")
+    parser.add_argument("--variant", default=None)
     parser.add_argument("--experiment", default=None)
     args = parser.parse_args()
 
-    cfg  = load_config(args.config, args.experiment)
+    cfg  = load_config(args.config, args.variant, args.experiment)
     pcfg = cfg.prepare_graph_dataset
 
     if pcfg.base_model not in TOKEN_MAP_DICT:

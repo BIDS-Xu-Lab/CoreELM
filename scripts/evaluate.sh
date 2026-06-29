@@ -14,9 +14,10 @@ module load miniconda
 conda activate ctELM_proj
 
 EXPERIMENT=${1:-}
+VARIANT=${2:-}
 
-if [ -n "$EXPERIMENT" ]; then
-    python evaluate.py --config configs/pipeline.yaml --experiment "$EXPERIMENT"
-else
-    python evaluate.py --config configs/pipeline.yaml
-fi
+ARGS=""
+[ -n "$VARIANT" ]    && ARGS="$ARGS --variant $VARIANT"
+[ -n "$EXPERIMENT" ] && ARGS="$ARGS --experiment $EXPERIMENT"
+
+python evaluate.py --config configs/pipeline.yaml $ARGS

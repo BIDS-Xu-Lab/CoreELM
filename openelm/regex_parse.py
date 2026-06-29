@@ -3,13 +3,16 @@ import re
 from pathlib import Path
 
 
-def extract_abstracts(input_path):
+def extract_abstracts(input_path, keep_labels=False):
     text = Path(input_path).read_text()
     blocks = re.split(r'###(\d+)\n', text)
     abstracts = {}
     for i in range(1, len(blocks), 2):
         pmid = int(blocks[i])
-        sentences = re.sub(r'^[A-Z_]+\s+', '', blocks[i + 1], flags=re.MULTILINE)
+        if keep_labels:
+            sentences = blocks[i + 1]
+        else:
+            sentences = re.sub(r'^[A-Z_]+\s+', '', blocks[i + 1], flags=re.MULTILINE)
         abstracts[pmid] = sentences.strip()
     return abstracts
 

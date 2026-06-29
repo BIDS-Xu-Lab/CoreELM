@@ -14,9 +14,10 @@ module load miniconda
 conda activate ctELM_proj
 
 EXPERIMENT=${1:-}
+VARIANT=${2:-}
 
-if [ -n "$EXPERIMENT" ]; then
-    torchrun --nproc_per_node=$SLURM_GPUS_ON_NODE train.py --config configs/pipeline.yaml --experiment "$EXPERIMENT"
-else
-    torchrun --nproc_per_node=$SLURM_GPUS_ON_NODE train.py --config configs/pipeline.yaml
-fi
+ARGS=""
+[ -n "$VARIANT" ]    && ARGS="$ARGS --variant $VARIANT"
+[ -n "$EXPERIMENT" ] && ARGS="$ARGS --experiment $EXPERIMENT"
+
+torchrun --nproc_per_node=$SLURM_GPUS_ON_NODE train.py --config configs/pipeline.yaml $ARGS

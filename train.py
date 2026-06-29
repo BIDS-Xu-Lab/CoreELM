@@ -13,11 +13,19 @@ import torch
 def main():
     parser = argparse.ArgumentParser(description="Train a embedding language model.")
     parser.add_argument("--config", default="configs/pipeline.yaml")
+    parser.add_argument("--variant", default=None)
     parser.add_argument("--experiment", default=None)
     args = parser.parse_args()
 
-    cfg  = load_config(args.config, args.experiment)
+    cfg  = load_config(args.config, args.variant, args.experiment)
     tcfg = cfg.train
+
+    prefix = getattr(cfg.paths, 'experiment_prefix', '')
+    if prefix:
+        p = Path(tcfg.output_dir)
+        output_dir = str(p.parent / prefix / p.name)
+    else:
+        output_dir = tcfg.output_dir
 
     dataset_dir = Path(cfg.paths.graph_outputd) / cfg.paths.dataset_subdir
     training_dataset = Dataset.load_from_disk(str(dataset_dir / "train"))
@@ -58,8 +66,8 @@ def main():
     num_training_steps   = (tcfg.num_train_epochs * len(training_dataset)) // effective_batch_size
 
     training_args = TrainingArguments(
-        output_dir=tcfg.output_dir,
-        logging_dir=tcfg.output_dir + "/logs",
+        output_dir=output_dir,
+        logging_dir=output_dir + "/logs",
         per_device_train_batch_size=tcfg.batch_size,
         gradient_accumulation_steps=tcfg.gradient_accumulation_steps,
         learning_rate=tcfg.learning_rate,

@@ -12,9 +12,9 @@ from openelm.config import load_config
 from openelm.model import LlamaForEmbeddingLM, Gemma3ForEmbeddingLM
 from openelm.tokens_map import TYPE_TOKEN_MAP_DICT
 
-def load_model(tcfg):
+def load_model(tcfg, output_dir=None):
     checkpoint_dirs = sorted(
-        Path(tcfg.output_dir).glob("checkpoint-*"),
+        Path(output_dir or tcfg.output_dir).glob("checkpoint-*"),
         key=lambda p: int(p.name.split("-")[1])
     )
     if not checkpoint_dirs:
@@ -45,18 +45,26 @@ def load_model(tcfg):
 def main():
     parser = argparse.ArgumentParser(description="Evaluate a trained ctELM graph model.")
     parser.add_argument("--config", default="configs/pipeline.yaml")
+    parser.add_argument("--variant", default=None)
     parser.add_argument("--experiment", default=None)
     args = parser.parse_args()
 
-    cfg  = load_config(args.config, args.experiment)
+    cfg  = load_config(args.config, args.variant, args.experiment)
     ecfg = cfg.eval
     tcfg = cfg.train
+
+    prefix = getattr(cfg.paths, 'experiment_prefix', '')
+    if prefix:
+        p = Path(tcfg.output_dir)
+        output_dir = str(p.parent / prefix / p.name)
+    else:
+        output_dir = tcfg.output_dir
 
     graph_outputd      = Path(cfg.paths.graph_outputd)
     embeddings_outputd = Path(cfg.paths.embeddings_outputd)
     dataset_outputd    = graph_outputd / cfg.paths.dataset_subdir
 
-    lora_elm, tokenizer, gen_tok_id = load_model(tcfg)
+    lora_elm, tokenizer, gen_tok_id = load_model(tcfg, output_dir=output_dir)
 
     abstracts  = np.load(graph_outputd / "abstracts.npy", allow_pickle=True)
     embeddings = np.memmap(
@@ -143,7 +151,7 @@ def main():
         "bertscore_f1":      {"mean": float(np.mean(bs_f1s)),   "std": float(np.std(bs_f1s))},
     }
 
-    output_path = Path(tcfg.output_dir) / "eval_results.json"
+    output_path = Path(output_dir) / "eval_results.json"
     with open(output_path, "w") as f:
         json.dump({"summary": summary, "per_example": results}, f, indent=2)
 

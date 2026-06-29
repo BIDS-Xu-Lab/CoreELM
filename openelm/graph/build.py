@@ -17,8 +17,8 @@ def load_pmids(path):
     pmid_idx = {int(p): i for i, p in enumerate(pmids)}
     return pmids, pmid_idx
 
-def load_abstracts(path, pmid_idx):
-    abstracts_dict = extract_abstracts(path)
+def load_abstracts(path, pmid_idx, keep_labels=False):
+    abstracts_dict = extract_abstracts(path, keep_labels=keep_labels)
     abstracts = np.empty(len(pmid_idx), dtype=object)
     for pmid, text in abstracts_dict.items():
         if pmid in pmid_idx:

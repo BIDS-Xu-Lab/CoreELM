@@ -4,12 +4,8 @@
 
 set -euo pipefail
 
-echo "Submitting build_graph array (4 variants)..."
-BUILD_JID=$(sbatch --parsable scripts/build_graph_array.sh)
-echo "  build array job $BUILD_JID"
-
-echo "Submitting embed array (4 variants, aftercorr:build)..."
-EMBED_JID=$(sbatch --parsable --dependency=aftercorr:$BUILD_JID scripts/embed_array.sh)
+echo "Submitting embed array (4 variants)..."
+EMBED_JID=$(sbatch --parsable scripts/embed_array.sh)
 echo "  embed array job $EMBED_JID"
 
 echo "Submitting prepare array (32 experiments, afterok:embed)..."
@@ -25,5 +21,5 @@ EVAL_JID=$(sbatch --parsable --dependency=aftercorr:$TRAIN_JID scripts/eval_arra
 echo "  eval array job $EVAL_JID"
 
 echo ""
-echo "Pipeline: build[$BUILD_JID] → embed[$EMBED_JID] → prepare[$PREP_JID] → train[$TRAIN_JID] → eval[$EVAL_JID]"
+echo "Pipeline: embed[$EMBED_JID] → prepare[$PREP_JID] → train[$TRAIN_JID] → eval[$EVAL_JID]"
 echo "Each job will email david.kaauwai@yale.edu on END or FAIL."

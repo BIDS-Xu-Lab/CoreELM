@@ -15,9 +15,11 @@ for variant in "${VARIANTS[@]}"; do
     VARIANT_NAME=$(basename "$variant" .yaml)
     echo "=== Variant: $VARIANT_NAME ==="
 
-    echo "Submitting embed job..."
-    EMBED_JID=$(sbatch --parsable scripts/embed.sh "$variant")
-    echo "  embed job $EMBED_JID"
+    echo "Submitting build_graph + embed jobs..."
+    BUILD_JID=$(sbatch --parsable scripts/build_graph.sh "$variant")
+    echo "  build_graph job $BUILD_JID"
+    EMBED_JID=$(sbatch --parsable --dependency=afterok:$BUILD_JID scripts/embed.sh "$variant")
+    echo "  embed       job $EMBED_JID"
     echo ""
 
     for exp in chain1 chain2 chain3 chain4; do

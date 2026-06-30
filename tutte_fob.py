@@ -35,6 +35,7 @@ def main():
     print("Identifying boundary/interior nodes...")
     temporal_out = np.diff(adj.indptr).astype(np.float64)         # row sums: papers that cite you
     temporal_in  = np.diff(adj.tocsc().indptr).astype(np.float64) # col sums: papers you cite
+    # foundational = cited by many relative to how much they cite
     ratio = np.where(temporal_in > 0, temporal_out / temporal_in, np.inf)
     is_boundary = ratio > 1.0
     boundary = np.where(is_boundary)[0]
@@ -81,13 +82,13 @@ def main():
 
     print("Plotting...")
     fig, ax = plt.subplots(figsize=(14, 14))
-    ax.scatter(xv[interior], yv[interior], s=0.3, alpha=0.15, c="steelblue", linewidths=0, label="interior (cited)")
-    ax.scatter(xv[boundary], yv[boundary], s=0.3, alpha=0.15, c="tomato",    linewidths=0, label="boundary (uncited)")
+    ax.scatter(xv[interior], yv[interior], s=0.3, alpha=0.15, c="steelblue", linewidths=0, label="interior (recent, low temporal out/in)")
+    ax.scatter(xv[boundary], yv[boundary], s=0.3, alpha=0.15, c="tomato",    linewidths=0, label="boundary (foundational, temporal out/in > 1)")
     ax.set_aspect("equal")
     ax.legend(markerscale=15, loc="upper right")
-    ax.set_title("Tutte Embedding — Citation Graph (log-radial)")
+    ax.set_title("Tutte Embedding — Citation Graph, High Out/In on Boundary (log-radial)")
 
-    out = args.output or str(graph_outputd / "tutte.png")
+    out = args.output or str(graph_outputd / "tutte_fob.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
     print(f"Saved → {out}")
 

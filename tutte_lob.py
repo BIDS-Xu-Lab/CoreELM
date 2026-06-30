@@ -7,10 +7,11 @@ import cupyx.scipy.sparse.linalg as cspla
 import matplotlib.pyplot as plt
 from pathlib import Path
 from openelm.config import load_config
+from openelm.graph.traverse import leaves
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Tutte embedding of citation graph.")
+    parser = argparse.ArgumentParser(description="Tutte embedding of citation graph (leaves on boundary).")
     parser.add_argument("--config", default="configs/pipeline.yaml")
     parser.add_argument("--variant", default=None)
     parser.add_argument("--output", default=None)
@@ -33,13 +34,11 @@ def main():
     )
 
     print("Identifying boundary/interior nodes...")
-    temporal_out = np.diff(adj.indptr).astype(np.float64)         # row sums: papers that cite you
-    temporal_in  = np.diff(adj.tocsc().indptr).astype(np.float64) # col sums: papers you cite
-    ratio = np.where(temporal_in > 0, temporal_out / temporal_in, np.inf)
-    is_boundary = ratio > 1.0
-    boundary = np.where(is_boundary)[0]
+    boundary = leaves(adj)
+    is_boundary = np.zeros(n, dtype=bool)
+    is_boundary[boundary] = True
     interior = np.where(~is_boundary)[0]
-    print(f"  {len(boundary):,} boundary (foundational, temporal out/in > 1)  |  {len(interior):,} interior")
+    print(f"  {len(boundary):,} boundary (leaves, in-degree=0)  |  {len(interior):,} interior")
 
     # Boundary positions: cosine distance from centroid → angle in [0, 2π]
     print("Computing boundary positions...")
@@ -82,12 +81,12 @@ def main():
     print("Plotting...")
     fig, ax = plt.subplots(figsize=(14, 14))
     ax.scatter(xv[interior], yv[interior], s=0.3, alpha=0.15, c="steelblue", linewidths=0, label="interior (cited)")
-    ax.scatter(xv[boundary], yv[boundary], s=0.3, alpha=0.15, c="tomato",    linewidths=0, label="boundary (uncited)")
+    ax.scatter(xv[boundary], yv[boundary], s=0.3, alpha=0.15, c="tomato",    linewidths=0, label="boundary (leaves, uncited)")
     ax.set_aspect("equal")
     ax.legend(markerscale=15, loc="upper right")
-    ax.set_title("Tutte Embedding — Citation Graph (log-radial)")
+    ax.set_title("Tutte Embedding — Citation Graph, Leaves on Boundary (log-radial)")
 
-    out = args.output or str(graph_outputd / "tutte.png")
+    out = args.output or str(graph_outputd / "tutte_lob.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
     print(f"Saved → {out}")
 

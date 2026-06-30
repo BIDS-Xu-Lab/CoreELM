@@ -9,4 +9,4 @@ prepare_graph_dataset:
       prompt_template: "The following papers form a citation chain in chronological order:{emb_token}{emb_token} Write the abstract of the paper that cites them."
 
 train:
-  output_dir: experiment_output/chain2_generate
+  output_dir: models/chain2_generate

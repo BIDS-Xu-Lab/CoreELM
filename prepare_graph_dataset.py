@@ -47,8 +47,15 @@ def main():
     cfg  = load_config(args.config, args.variant, args.experiment)
     pcfg = cfg.prepare_graph_dataset
 
-    if pcfg.base_model not in TOKEN_MAP_DICT:
-        raise ValueError(f"base_model '{pcfg.base_model}' not in TOKEN_MAP_DICT")
+    if pcfg.base_model in TOKEN_MAP_DICT:
+        token_map = TOKEN_MAP_DICT[pcfg.base_model]
+    else:
+        from transformers import AutoConfig
+        from openelm.tokens_map import TYPE_TOKEN_MAP_DICT
+        model_type = AutoConfig.from_pretrained(pcfg.base_model).model_type
+        if model_type not in TYPE_TOKEN_MAP_DICT:
+            raise ValueError(f"base_model '{pcfg.base_model}' has unsupported model_type '{model_type}'")
+        token_map = TYPE_TOKEN_MAP_DICT[model_type]
 
     graph_shared       = Path(cfg.paths.graph_shared)
     graph_outputd      = Path(cfg.paths.graph_outputd)
@@ -72,8 +79,8 @@ def main():
 
     print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(pcfg.base_model)
-    emb_token = TOKEN_MAP_DICT[pcfg.base_model]["emb_tok"]
-    gen_token  = TOKEN_MAP_DICT[pcfg.base_model]["gen_tok"]
+    emb_token = token_map["emb_tok"]
+    gen_token  = token_map["gen_tok"]
 
     tasks     = pcfg.get("tasks", None)
     task_list = list(tasks) if tasks else [None]

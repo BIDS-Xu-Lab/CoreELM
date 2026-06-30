@@ -30,7 +30,7 @@ eval:
 
 train:
   basemodel_path: models/initial_elm_model
-  output_dir: experiment_output/baseline
+  output_dir: models/baseline
   batch_size: 4
   gradient_accumulation_steps: 8
   learning_rate: 5e-5

@@ -9,4 +9,4 @@ prepare_graph_dataset:
       prompt_template: "The following paper forms the beginning of a citation chain:{emb_token} Write the abstract of the paper that cites it."
 
 train:
-  output_dir: experiment_output/chain1_generate
+  output_dir: models/chain1_generate

@@ -16,7 +16,7 @@ embed_abstracts:
   chkpt: 5
 
 prepare_graph_dataset:
-  base_model: meta-llama/Llama-3.1-8B-Instruct
+  base_model: models/initial_elm_model
   depth: 5
   seed: 42
   n_train: 2000000

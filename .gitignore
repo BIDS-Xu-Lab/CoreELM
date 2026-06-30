@@ -12,6 +12,9 @@ venv/
 Thumbs.db
 EOF
 
+# Secrets
+secrets.sh
+
 # Project specified exclusions
 test.ipynb
 _tested/

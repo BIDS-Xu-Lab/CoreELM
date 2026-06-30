@@ -12,6 +12,7 @@
 
 module load miniconda
 conda activate ctELM_proj
+source "$(dirname "$0")/../secrets.sh"
 
 VARIANTS=(
     configs/pipeline_no_labels_numbers.yaml

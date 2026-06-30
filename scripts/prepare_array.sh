@@ -4,7 +4,7 @@
 #SBATCH --partition=day
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
-#SBATCH --time=48:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=logs/prepare_%A_%a.out
 #SBATCH --error=logs/prepare_%A_%a.err
 #SBATCH --mail-type=END,FAIL

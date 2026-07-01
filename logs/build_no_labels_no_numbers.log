@@ -1,0 +1,28 @@
+Loading PMIDs...
+  190654 PMIDs loaded
+Loading abstracts...
+  190654 abstracts loaded
+Fetching citations...
+  188080 rows returned
+Building edges...
+  645877 edges found
+Building CSR...
+Extracting sample chains...
+
+---Chain 0---
+   [0]: The Lifestyle Heart Trial demonstrated that intensive lifestyle changes may lead to regression of coronary atheroscleros
+   [1]: Previous studies have reported lifestyle and risk factor deterioration following completion of a cardiac rehabilitation 
+   [2]: The emergence of HIV as a chronic condition means that people living with HIV are required to take more responsibility f
+
+---Chain 1---
+   [0]: Lowering the blood cholesterol level may reduce the risk of coronary heart disease .
+This double-blind study was designe
+   [1]: Previous studies have reported lifestyle and risk factor deterioration following completion of a cardiac rehabilitation 
+   [2]: The emergence of HIV as a chronic condition means that people living with HIV are required to take more responsibility f
+
+---Chain 2---
+   [0]: Recent clinical trials have shown that modification of plasma lipoprotein concentrations can favorably alter progression
+   [1]: Previous studies have reported lifestyle and risk factor deterioration following completion of a cardiac rehabilitation 
+   [2]: The emergence of HIV as a chronic condition means that people living with HIV are required to take more responsibility f
+Saving...
+Done.

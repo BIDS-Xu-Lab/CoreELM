@@ -1,0 +1,27 @@
+/var/spool/slurmd/job2050329/slurm_script: line 15: /var/spool/slurmd/job2050329/../secrets.sh: No such file or directory
+Traceback (most recent call last):
+  File "/gpfs/radev/project/xu_hua/dak85/ctELM-with-graph-time-embeddings/prepare_graph_dataset.py", line 119, in <module>
+    main()
+  File "/gpfs/radev/project/xu_hua/dak85/ctELM-with-graph-time-embeddings/prepare_graph_dataset.py", line 101, in main
+    train_datasets.append(ds.select(range(pcfg.n_train)))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/radev/home/dak85/.conda/envs/ctELM_proj/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 560, in wrapper
+    out: Union["Dataset", "DatasetDict"] = func(self, *args, **kwargs)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/radev/home/dak85/.conda/envs/ctELM_proj/lib/python3.12/site-packages/datasets/fingerprint.py", line 442, in wrapper
+    out = func(dataset, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/radev/home/dak85/.conda/envs/ctELM_proj/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3848, in select
+    return self._select_contiguous(start, length, new_fingerprint=new_fingerprint)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/radev/home/dak85/.conda/envs/ctELM_proj/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 560, in wrapper
+    out: Union["Dataset", "DatasetDict"] = func(self, *args, **kwargs)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/radev/home/dak85/.conda/envs/ctELM_proj/lib/python3.12/site-packages/datasets/fingerprint.py", line 442, in wrapper
+    out = func(dataset, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/radev/home/dak85/.conda/envs/ctELM_proj/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3909, in _select_contiguous
+    _check_valid_indices_value(start + length - 1, len(self))
+  File "/gpfs/radev/home/dak85/.conda/envs/ctELM_proj/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 622, in _check_valid_indices_value
+    raise IndexError(f"Index {index} out of range for dataset of size {size}.")
+IndexError: Index 1999999 out of range for dataset of size 223562.

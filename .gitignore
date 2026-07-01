@@ -10,7 +10,6 @@ venv/
 # OS generated files
 .DS_Store
 Thumbs.db
-EOF
 
 # Secrets
 secrets.sh

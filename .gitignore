@@ -25,3 +25,4 @@ data
 graph_output/
 embeddings/
 tmp/
+logs/

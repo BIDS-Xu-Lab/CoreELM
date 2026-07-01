@@ -22,14 +22,14 @@ VARIANTS=(
 )
 
 EXPERIMENTS=(
-    configs/experiments/chain1_reconstruct.yaml
-    configs/experiments/chain1_generate.yaml
     configs/experiments/chain2_reconstruct.yaml
     configs/experiments/chain2_generate.yaml
     configs/experiments/chain3_reconstruct.yaml
     configs/experiments/chain3_generate.yaml
     configs/experiments/chain4_reconstruct.yaml
     configs/experiments/chain4_generate.yaml
+    configs/experiments/chain5_reconstruct.yaml
+    configs/experiments/chain5_generate.yaml
 )
 
 VARIANT_IDX=$((SLURM_ARRAY_TASK_ID / 8))

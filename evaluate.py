@@ -10,7 +10,6 @@ from sentence_transformers import SentenceTransformer
 import evaluate as hf_evaluate
 from openelm.config import load_config
 from openelm.model import LlamaForEmbeddingLM, Gemma3ForEmbeddingLM
-from openelm.tokens_map import TYPE_TOKEN_MAP_DICT
 
 def load_model(tcfg, output_dir=None):
     checkpoint_dirs = sorted(
@@ -39,8 +38,7 @@ def load_model(tcfg, output_dir=None):
     lora_elm.eval()
 
     tokenizer = AutoTokenizer.from_pretrained(tcfg.basemodel_path)
-    gen_tok_id = TYPE_TOKEN_MAP_DICT[model_config.model_type]["gen_tok_id"]
-    return lora_elm, tokenizer, gen_tok_id
+    return lora_elm, tokenizer
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate a trained ctELM graph model.")
@@ -64,7 +62,7 @@ def main():
     embeddings_outputd = Path(cfg.paths.embeddings_outputd)
     dataset_outputd    = graph_outputd / cfg.paths.dataset_subdir
 
-    lora_elm, tokenizer, gen_tok_id = load_model(tcfg, output_dir=output_dir)
+    lora_elm, tokenizer = load_model(tcfg, output_dir=output_dir)
 
     abstracts  = np.load(graph_outputd / "abstracts.npy", allow_pickle=True)
     embeddings = np.memmap(
@@ -82,11 +80,12 @@ def main():
     for batch_start in range(0, len(val_ds), batch_size):
         batch = val_ds[batch_start:batch_start + batch_size]
 
-        # Build prompt-only input_ids (everything before gen_tok)
-        prompt_tensors = []
-        for ids in batch["input_ids"]:
-            gen_pos = ids.index(gen_tok_id)
-            prompt_tensors.append(torch.tensor(ids[:gen_pos], dtype=torch.long))
+        # prompt_ids already ends with the gen token, so everything before that
+        # last element is the prompt-only portion to feed into .generate()
+        prompt_tensors = [
+            torch.tensor(prompt_ids[:-1], dtype=torch.long)
+            for prompt_ids in batch["prompt_ids"]
+        ]
 
         max_len = max(t.size(0) for t in prompt_tensors)
         padded  = torch.full((len(prompt_tensors), max_len), tokenizer.pad_token_id, dtype=torch.long)

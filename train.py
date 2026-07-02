@@ -1,13 +1,12 @@
 import os
 import argparse
-from functools import partial
 from pathlib import Path
 import numpy as np
 from openelm.model import LlamaForEmbeddingLM, Gemma3ForEmbeddingLM
-from openelm.utils import collate_function_dynamic_padding_llama, collate_function_dynamic_padding_gemma3
+from openelm.utils import make_collate_function_dynamic_padding_llama, make_collate_function_dynamic_padding_gemma3
 from openelm.config import load_config
 from datasets import Dataset
-from transformers import TrainingArguments, AutoConfig
+from transformers import TrainingArguments, AutoConfig, AutoTokenizer
 from trl import SFTTrainer
 from peft import LoraConfig, get_peft_model
 import torch
@@ -41,13 +40,15 @@ def main():
         dtype="float32", mode="r", shape=(len(abstracts), cfg.embed_abstracts.embed_dim)
     )
 
+    tokenizer = AutoTokenizer.from_pretrained(tcfg.basemodel_path)
+
     config = AutoConfig.from_pretrained(tcfg.basemodel_path)
     if config.model_type == "llama":
         model_class = LlamaForEmbeddingLM
-        collate_fn  = partial(collate_function_dynamic_padding_llama, embeddings=embeddings)
+        collate_fn  = make_collate_function_dynamic_padding_llama(embeddings, abstracts, tokenizer)
     elif config.model_type in ["gemma3", "gemma3_text"]:
         model_class = Gemma3ForEmbeddingLM
-        collate_fn  = partial(collate_function_dynamic_padding_gemma3, embeddings=embeddings)
+        collate_fn  = make_collate_function_dynamic_padding_gemma3(embeddings, abstracts, tokenizer)
     else:
         raise ValueError(f"ERROR: Model type {config.model_type} not supported")
 

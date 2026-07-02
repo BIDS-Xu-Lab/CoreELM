@@ -7,44 +7,77 @@ from openelm.model import LlamaForEmbeddingLM, Gemma3ForEmbeddingLM
 ##########
 ## Collate function for dynamic padding
 ##########
-def collate_function_dynamic_padding_gemma3(examples, embeddings):
-    return collate_function_dynamic_padding(examples, embeddings, model="gemma3")
+def make_collate_function_dynamic_padding_gemma3(embeddings, abstracts, tokenizer):
+    return make_collate_function_dynamic_padding(embeddings, abstracts, tokenizer, model="gemma3")
 
-def collate_function_dynamic_padding_llama(examples, embeddings):
-    return collate_function_dynamic_padding(examples, embeddings, model="llama")
+def make_collate_function_dynamic_padding_llama(embeddings, abstracts, tokenizer):
+    return make_collate_function_dynamic_padding(embeddings, abstracts, tokenizer, model="llama")
 
-def collate_function_dynamic_padding(examples, embeddings, model="llama"):
-    input_ids = []
-    labels = []
-    # -1 because we will not include generation token in the resultant input_ids and labels
-    max_length = max([len(example["input_ids"]) for example in examples]) - 1
-
+def make_collate_function_dynamic_padding(embeddings, abstracts, tokenizer, model="llama"):
+    """
+    Build a collate function that lazily resolves the target abstract's tokens
+    (and domain embedding vectors) at batch time from a stored index, instead of
+    requiring every dataset row to carry its own copy of them. The same target
+    abstract is the endpoint of many different citation chains, so baking its
+    tokenized text into every row duplicates it across the whole dataset;
+    resolving — and caching — it here keeps that cost to one tokenization per
+    distinct target regardless of how many rows reference it.
+    """
     pad_token_id = TYPE_TOKEN_MAP_DICT[model]["pad_tok_id"]
     gen_token_id = TYPE_TOKEN_MAP_DICT[model]["gen_tok_id"]
+    gen_token    = TYPE_TOKEN_MAP_DICT[model]["gen_tok"]
 
-    for example in examples:
-        gen_tok_pos = example["input_ids"].index(gen_token_id)
-        # create an array with max_length, filled up by pad_token_id
-        input_ids_padded = torch.full((max_length,), pad_token_id, dtype=torch.long)
-        # filter out generation token
-        ids_without_gen_token = example["input_ids"][:gen_tok_pos] + example["input_ids"][gen_tok_pos+1:]
-        input_ids_padded[:len(ids_without_gen_token)] = torch.tensor(ids_without_gen_token) 
-        input_ids.append(input_ids_padded)
+    # the tokens a chat template appends after the assistant's content (e.g.
+    # end-of-turn + EOS) are fixed regardless of what that content is, so derive
+    # them once here rather than persisting them redundantly in every row
+    probe_ids = tokenizer.apply_chat_template([
+        {"role": "user", "content": "x"},
+        {"role": "assistant", "content": gen_token},
+    ])
+    closing_ids = probe_ids[probe_ids.index(gen_token_id) + 1:]
 
-        labels_padded = torch.full((max_length,), -100, dtype=torch.long)
-        # set prompt [:gen_tok_pos] as -100
-        # set pads [len(ids_without_gen_token):] as -100
-        # only learn target, which is [gen_tok_pos:len(ids_without_gen_token)]
-        labels_padded[gen_tok_pos:len(ids_without_gen_token)] = input_ids_padded[gen_tok_pos:len(ids_without_gen_token)]
-        labels.append(labels_padded)
+    target_ids_cache = {}
+    def resolve_target_ids(target_idx):
+        if target_idx not in target_ids_cache:
+            target_ids_cache[target_idx] = tokenizer.encode(str(abstracts[target_idx]), add_special_tokens=False)
+        return target_ids_cache[target_idx]
 
-    embs = [
-        torch.tensor(embeddings[idx])
-        for example in examples
-        for idx in example["domain_embedding_idx"]
-    ]
+    def collate_fn(examples):
+        input_ids = []
+        labels = []
+        sequences = []
+        for example in examples:
+            prompt_ids = example["prompt_ids"]
+            target_ids = resolve_target_ids(example["target_idx"])
+            # gen token itself is a boundary marker, not fed as an input token
+            gen_tok_pos = len(prompt_ids) - 1
+            ids_without_gen_token = prompt_ids[:-1] + target_ids + closing_ids
+            sequences.append((gen_tok_pos, ids_without_gen_token))
 
-    return {"input_ids": torch.stack(input_ids), "domain_embeddings": embs, "labels": torch.stack(labels)}
+        max_length = max(len(ids) for _, ids in sequences)
+
+        for gen_tok_pos, ids_without_gen_token in sequences:
+            # create an array with max_length, filled up by pad_token_id
+            input_ids_padded = torch.full((max_length,), pad_token_id, dtype=torch.long)
+            input_ids_padded[:len(ids_without_gen_token)] = torch.tensor(ids_without_gen_token)
+            input_ids.append(input_ids_padded)
+
+            labels_padded = torch.full((max_length,), -100, dtype=torch.long)
+            # set prompt [:gen_tok_pos] as -100
+            # set pads [len(ids_without_gen_token):] as -100
+            # only learn target, which is [gen_tok_pos:len(ids_without_gen_token)]
+            labels_padded[gen_tok_pos:len(ids_without_gen_token)] = input_ids_padded[gen_tok_pos:len(ids_without_gen_token)]
+            labels.append(labels_padded)
+
+        embs = [
+            torch.tensor(embeddings[idx])
+            for example in examples
+            for idx in example["domain_embedding_idx"]
+        ]
+
+        return {"input_ids": torch.stack(input_ids), "domain_embeddings": embs, "labels": torch.stack(labels)}
+
+    return collate_fn
 
 ##########
 ## Helper function to load elm model

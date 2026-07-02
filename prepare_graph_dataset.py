@@ -13,28 +13,36 @@ def graph_chain_generator(adj, abstracts, tokenizer, emb_token, gen_token, depth
     include_target = task.get("include_target_embedding", True) if task else True
     # chain length = n_slots when target is included, n_slots+1 when withheld
     expected_chain_len = n_slots if include_target else n_slots + 1
+
+    # the prompt is identical for every chain in this task (it only depends on
+    # depth/task, not on which nodes end up in a given chain), so tokenize it
+    # once here instead of re-running apply_chat_template on every row
+    chain_len = depth + 1
+    if n_slots > 0:
+        prompt = task.prompt_template.format(emb_token=emb_token)
+    else:
+        indices_count = chain_len if include_target else chain_len - 1
+        prompt = " ".join([emb_token] * indices_count)
+    gen_tok_id = tokenizer.convert_tokens_to_ids(gen_token)
+    probe_ids = tokenizer.apply_chat_template([
+        {"role": "user", "content": prompt},
+        {"role": "assistant", "content": gen_token},
+    ])
+    prompt_ids = probe_ids[:probe_ids.index(gen_tok_id) + 1]
+
     for chain in branch_iterator(adj, depth=depth, max_chains=n_total, seed=seed):
         if n_slots > 0 and len(chain) != expected_chain_len:
             continue
-        target = abstracts[chain[-1]]
-        if target is None:
+        if abstracts[chain[-1]] is None:
             continue
-        if n_slots > 0:
-            prompt = task.prompt_template.format(emb_token=emb_token)
-        else:
-            indices_count = len(chain) if include_target else len(chain) - 1
-            prompt = " ".join([emb_token] * indices_count)
-        chat = [
-            {"role": "user", "content": prompt},
-            {"role": "assistant", "content": gen_token + str(target)},
-        ]
         indices = chain if include_target else chain[:-1]
         yield {
-            "input_ids": tokenizer.apply_chat_template(chat),
-            # store node indices, not embedding values — the actual vectors are
-            # resolved from the shared embeddings memmap at collate time, since
-            # materializing them here duplicates the same 4KB vector across
-            # every overlapping chain and blows up dataset size combinatorially
+            "prompt_ids": prompt_ids,
+            # store node indices and the target's node index, not embedding
+            # values or tokenized target text — both are resolved from the
+            # shared embeddings memmap / abstracts array at collate time, since
+            # materializing them here duplicates the same data across every
+            # overlapping chain and blows up dataset size combinatorially
             "domain_embedding_idx": [int(idx) for idx in indices],
             "target_idx": int(chain[-1]),
         }

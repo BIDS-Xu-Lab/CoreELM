@@ -1,7 +1,6 @@
 import argparse
 import numpy as np
 import scipy.sparse as sp
-import torch
 from pathlib import Path
 from transformers import AutoTokenizer
 from datasets import Dataset, interleave_datasets
@@ -9,7 +8,7 @@ from openelm.tokens_map import TOKEN_MAP_DICT
 from openelm.graph.traverse import branch_iterator
 from openelm.config import load_config
 
-def graph_chain_generator(adj, abstracts, embeddings, tokenizer, emb_token, gen_token, depth, n_total, seed, task=None):
+def graph_chain_generator(adj, abstracts, tokenizer, emb_token, gen_token, depth, n_total, seed, task=None):
     n_slots = task.prompt_template.count("{emb_token}") if task else 0
     include_target = task.get("include_target_embedding", True) if task else True
     # chain length = n_slots when target is included, n_slots+1 when withheld
@@ -30,10 +29,13 @@ def graph_chain_generator(adj, abstracts, embeddings, tokenizer, emb_token, gen_
             {"role": "assistant", "content": gen_token + str(target)},
         ]
         indices = chain if include_target else chain[:-1]
-        domain_embeddings = [torch.Tensor(embeddings[idx]) for idx in indices]
         yield {
             "input_ids": tokenizer.apply_chat_template(chat),
-            "domain_embeddings": domain_embeddings,
+            # store node indices, not embedding values — the actual vectors are
+            # resolved from the shared embeddings memmap at collate time, since
+            # materializing them here duplicates the same 4KB vector across
+            # every overlapping chain and blows up dataset size combinatorially
+            "domain_embedding_idx": [int(idx) for idx in indices],
             "target_idx": int(chain[-1]),
         }
 
@@ -59,7 +61,6 @@ def main():
 
     graph_shared       = Path(cfg.paths.graph_shared)
     graph_outputd      = Path(cfg.paths.graph_outputd)
-    embeddings_outputd = Path(cfg.paths.embeddings_outputd)
     dataset_outputd    = graph_outputd / cfg.paths.dataset_subdir
     dataset_outputd.mkdir(parents=True, exist_ok=True)
 
@@ -70,12 +71,6 @@ def main():
 
     print("Loading abstracts...")
     abstracts = np.load(graph_outputd / "abstracts.npy", allow_pickle=True)
-
-    print("Loading embeddings...")
-    embeddings = np.memmap(
-        embeddings_outputd / "embeddings.npy",
-        dtype="float32", mode="r", shape=(len(abstracts), cfg.embed_abstracts.embed_dim)
-    )
 
     print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(pcfg.base_model)
@@ -93,14 +88,27 @@ def main():
     for task in task_list:
         ds = Dataset.from_generator(
             lambda t=task: graph_chain_generator(
-                adj, abstracts, embeddings, tokenizer,
+                adj, abstracts, tokenizer,
                 emb_token, gen_token, pcfg.depth, n_total, pcfg.seed, t
             )
         )
         ds = ds.shuffle(seed=pcfg.seed)
-        train_datasets.append(ds.select(range(pcfg.n_train)))
-        val_datasets.append(  ds.select(range(pcfg.n_train, pcfg.n_train + pcfg.n_val)))
-        eval_datasets.append( ds.select(range(pcfg.n_train + pcfg.n_val, n_total)))
+        n_available = len(ds)
+        n_train, n_val = pcfg.n_train, pcfg.n_val
+        if n_available < n_total:
+            # fewer chains exist than requested (e.g. deep chains are rare) — scale
+            # the split proportionally instead of crashing on an out-of-range index
+            print(
+                f"WARNING: only found {n_available:,} chains for task "
+                f"'{task.task_name if task else None}', fewer than the requested "
+                f"{n_total:,} (n_train={pcfg.n_train:,}, n_val={pcfg.n_val:,}, "
+                f"n_eval={pcfg.n_eval:,}). Splitting proportionally instead."
+            )
+            n_train = int(pcfg.n_train / n_total * n_available)
+            n_val   = int(pcfg.n_val   / n_total * n_available)
+        train_datasets.append(ds.select(range(n_train)))
+        val_datasets.append(  ds.select(range(n_train, n_train + n_val)))
+        eval_datasets.append( ds.select(range(n_train + n_val, n_available)))
 
     def merge(dsets):
         return interleave_datasets(dsets) if len(dsets) > 1 else dsets[0]

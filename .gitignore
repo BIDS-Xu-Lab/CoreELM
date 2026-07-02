@@ -25,3 +25,4 @@ graph_output/
 embeddings/
 tmp/
 logs/
+.hf_cache/

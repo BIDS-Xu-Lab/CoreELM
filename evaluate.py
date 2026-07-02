@@ -96,11 +96,11 @@ def main():
             prompt_lengths.append(t.size(0))
         padded = padded.to("cuda")
 
-        # Flatten domain_embeddings: [ex0_emb0, ex0_emb1, ex1_emb0, ...]
+        # Flatten domain_embedding_idx into resolved vectors: [ex0_emb0, ex0_emb1, ex1_emb0, ...]
         domain_embs = [
-            torch.tensor(e, dtype=torch.bfloat16).to("cuda")
-            for embs in batch["domain_embeddings"]
-            for e in embs
+            torch.tensor(embeddings[idx], dtype=torch.bfloat16).to("cuda")
+            for idxs in batch["domain_embedding_idx"]
+            for idx in idxs
         ]
 
         with torch.no_grad():

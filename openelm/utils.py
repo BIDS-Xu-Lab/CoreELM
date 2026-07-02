@@ -7,13 +7,13 @@ from openelm.model import LlamaForEmbeddingLM, Gemma3ForEmbeddingLM
 ##########
 ## Collate function for dynamic padding
 ##########
-def collate_function_dynamic_padding_gemma3(examples):
-    return collate_function_dynamic_padding(examples, model="gemma3")
+def collate_function_dynamic_padding_gemma3(examples, embeddings):
+    return collate_function_dynamic_padding(examples, embeddings, model="gemma3")
 
-def collate_function_dynamic_padding_llama(examples):
-    return collate_function_dynamic_padding(examples, model="llama")
+def collate_function_dynamic_padding_llama(examples, embeddings):
+    return collate_function_dynamic_padding(examples, embeddings, model="llama")
 
-def collate_function_dynamic_padding(examples, model="llama"):
+def collate_function_dynamic_padding(examples, embeddings, model="llama"):
     input_ids = []
     labels = []
     # -1 because we will not include generation token in the resultant input_ids and labels
@@ -38,7 +38,11 @@ def collate_function_dynamic_padding(examples, model="llama"):
         labels_padded[gen_tok_pos:len(ids_without_gen_token)] = input_ids_padded[gen_tok_pos:len(ids_without_gen_token)]
         labels.append(labels_padded)
 
-    embs = [torch.tensor(x) for example in examples for x in example["domain_embeddings"]] 
+    embs = [
+        torch.tensor(embeddings[idx])
+        for example in examples
+        for idx in example["domain_embedding_idx"]
+    ]
 
     return {"input_ids": torch.stack(input_ids), "domain_embeddings": embs, "labels": torch.stack(labels)}
 

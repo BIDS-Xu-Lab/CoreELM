@@ -1,6 +1,8 @@
 import os
 import argparse
+from functools import partial
 from pathlib import Path
+import numpy as np
 from openelm.model import LlamaForEmbeddingLM, Gemma3ForEmbeddingLM
 from openelm.utils import collate_function_dynamic_padding_llama, collate_function_dynamic_padding_gemma3
 from openelm.config import load_config
@@ -27,17 +29,25 @@ def main():
     else:
         output_dir = tcfg.output_dir
 
-    dataset_dir = Path(cfg.paths.graph_outputd) / cfg.paths.dataset_subdir
+    graph_outputd      = Path(cfg.paths.graph_outputd)
+    embeddings_outputd = Path(cfg.paths.embeddings_outputd)
+    dataset_dir = graph_outputd / cfg.paths.dataset_subdir
     training_dataset = Dataset.load_from_disk(str(dataset_dir / "train"))
     dev_dataset      = Dataset.load_from_disk(str(dataset_dir / "validation"))
+
+    abstracts  = np.load(graph_outputd / "abstracts.npy", allow_pickle=True)
+    embeddings = np.memmap(
+        embeddings_outputd / "embeddings.npy",
+        dtype="float32", mode="r", shape=(len(abstracts), cfg.embed_abstracts.embed_dim)
+    )
 
     config = AutoConfig.from_pretrained(tcfg.basemodel_path)
     if config.model_type == "llama":
         model_class = LlamaForEmbeddingLM
-        collate_fn  = collate_function_dynamic_padding_llama
+        collate_fn  = partial(collate_function_dynamic_padding_llama, embeddings=embeddings)
     elif config.model_type in ["gemma3", "gemma3_text"]:
         model_class = Gemma3ForEmbeddingLM
-        collate_fn  = collate_function_dynamic_padding_gemma3
+        collate_fn  = partial(collate_function_dynamic_padding_gemma3, embeddings=embeddings)
     else:
         raise ValueError(f"ERROR: Model type {config.model_type} not supported")
 

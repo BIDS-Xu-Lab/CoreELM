@@ -12,6 +12,7 @@
 
 module load miniconda
 conda activate ctELM_proj
+export HF_HOME="$(cd "$(dirname "$0")/.." && pwd)/.hf_cache"
 source "$(dirname "$0")/../secrets.sh"
 
 VARIANTS=(

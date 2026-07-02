@@ -12,6 +12,7 @@
 
 module load miniconda
 conda activate ctELM_proj
+export HF_HOME="$(cd "$(dirname "$0")/.." && pwd)/.hf_cache"
 
 EXPERIMENT=${1:-}
 VARIANT=${2:-}

@@ -1,8 +1,0 @@
-paths:
-  graph_outputd: graph_output/labels_numbers
-  embeddings_outputd: embeddings/labels_numbers
-  experiment_prefix: labels_numbers
-
-graph_build:
-  txt: data/pubmed-rct/PubMed_200k_RCT/train.txt
-  keep_labels: true

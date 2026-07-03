@@ -150,15 +150,38 @@ def main():
         "bertscore_f1":      {"mean": float(np.mean(bs_f1s)),   "std": float(np.std(bs_f1s))},
     }
 
-    output_path = Path(output_dir) / "eval_results.json"
-    with open(output_path, "w") as f:
-        json.dump({"summary": summary, "per_example": results}, f, indent=2)
+    metrics = [
+        {
+            "target_idx":         r["target_idx"],
+            "cosine_similarity":  r["cosine_similarity"],
+            "bertscore_precision": r["bertscore_precision"],
+            "bertscore_recall":    r["bertscore_recall"],
+            "bertscore_f1":        r["bertscore_f1"],
+        }
+        for r in results
+    ]
+    generations = [
+        {
+            "target_idx":  r["target_idx"],
+            "generated":   r["generated"],
+            "target_text": r["target_text"],
+        }
+        for r in results
+    ]
+
+    results_path     = Path(output_dir) / "eval_results.json"
+    generations_path = Path(output_dir) / "eval_generations.json"
+    with open(results_path, "w") as f:
+        json.dump({"summary": summary, "per_example": metrics}, f, indent=2)
+    with open(generations_path, "w") as f:
+        json.dump(generations, f, indent=2)
 
     print(f"\n=== Evaluation Results ===")
     print(f"N:                  {summary['n']}")
     print(f"Cosine Similarity:  {summary['cosine_similarity']['mean']:.4f} ± {summary['cosine_similarity']['std']:.4f}")
     print(f"BERTScore F1:       {summary['bertscore_f1']['mean']:.4f} ± {summary['bertscore_f1']['std']:.4f}")
-    print(f"Saved to {output_path}")
+    print(f"Saved metrics to {results_path}")
+    print(f"Saved generations to {generations_path}")
 
 if __name__ == "__main__":
     main()

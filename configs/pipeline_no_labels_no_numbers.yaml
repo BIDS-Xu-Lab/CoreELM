@@ -1,0 +1,8 @@
+paths:
+  graph_outputd: graph_output/no_labels_no_numbers
+  embeddings_outputd: embeddings/no_labels_no_numbers
+  experiment_prefix: no_labels_no_numbers
+
+graph_build:
+  txt: data/pubmed-rct/PubMed_200k_RCT_numbers_replaced_with_at_sign/train.txt
+  keep_labels: false

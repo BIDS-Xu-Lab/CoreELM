@@ -10,9 +10,19 @@ venv/
 # OS generated files
 .DS_Store
 Thumbs.db
-EOF
+
+# Secrets
+secrets.sh
 
 # Project specified exclusions
 test.ipynb
 _tested/
-demo_dataset/
+demo_dataset/data
+data
+
+# Large generated data files
+graph_output/
+embeddings/
+tmp/
+logs/
+.hf_cache/

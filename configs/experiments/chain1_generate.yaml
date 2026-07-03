@@ -1,0 +1,12 @@
+paths:
+  dataset_subdir: dataset_chain1_generate
+
+prepare_graph_dataset:
+  depth: 1
+  tasks:
+    - task_name: chain1_generate
+      include_target_embedding: false
+      prompt_template: "The following paper forms the beginning of a citation chain:{emb_token} Write the abstract of the paper that cites it."
+
+train:
+  output_dir: models/chain1_generate

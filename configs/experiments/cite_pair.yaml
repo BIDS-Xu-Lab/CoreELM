@@ -1,0 +1,11 @@
+paths:
+  dataset_subdir: dataset_cite_pair
+
+prepare_graph_dataset:
+  depth: 1
+  tasks:
+    - task_name: cite_pair
+      prompt_template: "Cited paper:{emb_token} Citing paper:{emb_token}"
+
+train:
+  output_dir: experiment_output/cite_pair

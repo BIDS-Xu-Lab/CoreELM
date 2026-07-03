@@ -1,0 +1,40 @@
+paths:
+  graph_shared: graph_output/shared
+  graph_outputd: graph_output
+  embeddings_outputd: embeddings
+  dataset_subdir: dataset
+
+graph_build:
+  txt: data/pubmed200k/abstracts.txt
+  pmidf: data/pubmed-rct/pmids/200k_RCT/train_pmids.txt
+  db: data/icite/icite.db
+
+embed_abstracts:
+  model: BAAI/bge-large-en-v1.5
+  embed_dim: 1024
+  batch: 256
+  chkpt: 5
+
+prepare_graph_dataset:
+  base_model: models/initial_elm_model
+  depth: 5
+  seed: 42
+  n_train: 2000000
+  n_val: 100000
+  n_eval: 100000
+
+eval:
+  batch_size: 8
+  max_new_tokens: 256
+  repetition_penalty: 1.2
+
+train:
+  basemodel_path: models/initial_elm_model
+  output_dir: models/baseline
+  batch_size: 4
+  gradient_accumulation_steps: 8
+  learning_rate: 5e-5
+  num_train_epochs: 1
+  eval_steps: 100
+  save_steps: 0.1
+  resume_from_checkpoint: null

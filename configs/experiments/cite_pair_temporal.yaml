@@ -1,0 +1,11 @@
+paths:
+  dataset_subdir: dataset_cite_pair_temporal
+
+prepare_graph_dataset:
+  depth: 1
+  tasks:
+    - task_name: cite_pair_temporal
+      prompt_template: "An earlier work {emb_token} was subsequently cited by a later paper{emb_token}. Write the abstract of the later paper."
+
+train:
+  output_dir: experiment_output/cite_pair_temporal

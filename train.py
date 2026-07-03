@@ -9,8 +9,10 @@ from datasets import Dataset
 from transformers import TrainingArguments, AutoConfig, AutoTokenizer
 from trl import SFTTrainer
 from peft import LoraConfig, get_peft_model
+from torch.distributed.elastic.multiprocessing.errors import record
 import torch
 
+@record
 def main():
     parser = argparse.ArgumentParser(description="Train a embedding language model.")
     parser.add_argument("--config", default="configs/pipeline.yaml")

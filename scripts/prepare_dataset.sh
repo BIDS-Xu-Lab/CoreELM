@@ -11,7 +11,7 @@
 
 module load miniconda
 conda activate ctELM_proj
-export HF_HOME="$(cd "$(dirname "$0")/.." && pwd)/.hf_cache"
+export HF_HOME="${SLURM_SUBMIT_DIR}/.hf_cache"
 
 EXPERIMENT=${1:-}
 VARIANT=${2:-}

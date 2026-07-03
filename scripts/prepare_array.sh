@@ -12,8 +12,8 @@
 
 module load miniconda
 conda activate ctELM_proj
-export HF_HOME="$(cd "$(dirname "$0")/.." && pwd)/.hf_cache"
-source "$(dirname "$0")/../secrets.sh"
+export HF_HOME="${SLURM_SUBMIT_DIR}/.hf_cache"
+source "${SLURM_SUBMIT_DIR}/secrets.sh"
 
 VARIANTS=(
     configs/pipeline_no_labels_numbers.yaml

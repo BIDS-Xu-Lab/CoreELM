@@ -150,64 +150,15 @@ def main():
         "bertscore_f1":      {"mean": float(np.mean(bs_f1s)),   "std": float(np.std(bs_f1s))},
     }
 
-    # combined_score ranks examples for the best/worst generation sample below:
-    # mean of min-max-normalized cosine similarity and BERTScore F1, so an example
-    # has to do well on both the domain-embedding and text-overlap metrics to rank as "best".
-    def min_max_normalize(values):
-        values = np.array(values, dtype=float)
-        lo, hi = values.min(), values.max()
-        if hi - lo < 1e-12:
-            return np.full_like(values, 0.5)
-        return (values - lo) / (hi - lo)
-
-    combined_scores = (min_max_normalize(cos_sims) + min_max_normalize(bs_f1s)) / 2
-    for r, score in zip(results, combined_scores):
-        r["combined_score"] = float(score)
-
-    metrics = [
-        {
-            "target_idx":          r["target_idx"],
-            "cosine_similarity":   r["cosine_similarity"],
-            "bertscore_precision": r["bertscore_precision"],
-            "bertscore_recall":    r["bertscore_recall"],
-            "bertscore_f1":        r["bertscore_f1"],
-            "combined_score":      r["combined_score"],
-        }
-        for r in results
-    ]
-
-    # Full generated/target text for every example would be too large to store
-    # (n_eval is in the hundreds of thousands per experiment) so we only keep the
-    # best and worst GENERATION_SAMPLE_FRACTION by combined_score for qualitative review.
-    GENERATION_SAMPLE_FRACTION = 0.05
-    n_keep = min(max(1, int(len(results) * GENERATION_SAMPLE_FRACTION)), len(results) // 2)
-    ranked = sorted(results, key=lambda r: r["combined_score"], reverse=True)
-    best_worst = [(r, "best") for r in ranked[:n_keep]] + [(r, "worst") for r in ranked[-n_keep:]]
-
-    generations = [
-        {
-            "target_idx":     r["target_idx"],
-            "quality_group":  group,
-            "combined_score": r["combined_score"],
-            "generated":      r["generated"],
-            "target_text":    r["target_text"],
-        }
-        for r, group in best_worst
-    ]
-
-    results_path     = Path(output_dir) / "eval_results.json"
-    generations_path = Path(output_dir) / "eval_generations.json"
-    with open(results_path, "w") as f:
-        json.dump({"summary": summary, "per_example": metrics}, f, indent=2)
-    with open(generations_path, "w") as f:
-        json.dump(generations, f, indent=2)
+    output_path = Path(output_dir) / "eval_results.json"
+    with open(output_path, "w") as f:
+        json.dump({"summary": summary, "per_example": results}, f, indent=2)
 
     print(f"\n=== Evaluation Results ===")
     print(f"N:                  {summary['n']}")
     print(f"Cosine Similarity:  {summary['cosine_similarity']['mean']:.4f} ± {summary['cosine_similarity']['std']:.4f}")
     print(f"BERTScore F1:       {summary['bertscore_f1']['mean']:.4f} ± {summary['bertscore_f1']['std']:.4f}")
-    print(f"Saved metrics to {results_path}")
-    print(f"Saved {len(generations)} generations ({n_keep} best + {n_keep} worst) to {generations_path}")
+    print(f"Saved to {output_path}")
 
 if __name__ == "__main__":
     main()
